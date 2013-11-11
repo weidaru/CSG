@@ -30,6 +30,10 @@ public class Cube {
 		return zDim;
 	}
 	
+	public Point3f getCenter() {
+		return new Point3f(xDim, yDim, zDim);
+	}
+	
 	public Line getEdge(int index) {
 		assert(index < 12 && index >= 0);
 		return edges[index];

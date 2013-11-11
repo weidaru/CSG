@@ -21,6 +21,7 @@ public class Line {
 	}
 	
 	public Line setStartParam(float startParm) {
+		assert(startParam <= this.endParam);
 		this.startParam = startParm;
 		return this;
 	}
@@ -30,6 +31,7 @@ public class Line {
 	}
 	
 	public Line setEndParam(float endParam) {
+		assert(endParam >= this.startParam);
 		this.endParam = endParam;
 		return this;
 	}
@@ -38,8 +40,16 @@ public class Line {
 		return lerp(startPoint, endPoint, startParam);
 	}
 	
+	public Point3f getStartPointRaw() {
+		return startPoint;
+	}
+	
 	public Point3f getEndPoint() {
 		return lerp(startPoint, endPoint, endParam);
+	}
+	
+	public Point3f getEndPointRaw() {
+		return endPoint;
 	}
 	
 

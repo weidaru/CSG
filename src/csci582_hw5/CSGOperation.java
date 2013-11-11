@@ -8,6 +8,8 @@ import javax.media.j3d.TransformGroup;
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 
+import csci582_hw5.LineClassification.LineClass;
+
 public class CSGOperation {
 	public static Sphere calculateBoundingSphere(CSGNode node) {
 		if(node == null)
@@ -107,11 +109,10 @@ public class CSGOperation {
 		TransformGroup group = new TransformGroup();
 		while(!edges.isEmpty()) {
 			Line cur = edges.poll();
-			int result[] = lineCSGClassification(cur ,node);
-			if(result[2] != result[3]) {
-				cur.setStartParam(result[2]);
-				cur.setEndParam(result[3]);
-				group.addChild(cur.toShape3D());
+			LineClassification c = lineCSGClassification(cur ,node);
+			LinkedList<Line> on = c.generateOn();
+			for(int i=0; i<on.size(); i++) {
+				group.addChild(on.get(i).toShape3D());
 			}
 		}
 		
@@ -151,28 +152,163 @@ public class CSGOperation {
 			assert(false) : "Unknown CSGNode type " + cur.getClass().getName();
 	}
 	
-
-	//parametric coefficient.
-	public static int[] lineCSGClassification(Line line, CSGNode node) {
+	//assume line and cube are orthogonal
+	public static LineClassification lineCSGClassification(Line line, CSGNode node) {
 		LinkedList<Matrix4f> stack = new LinkedList<Matrix4f>();
 
 		return _lineCSGClassification(line, node, stack);
 	}
 	
-	private static int[] _lineCSGClassification(Line line, CSGNode node, LinkedList<Matrix4f> stack) {
+	private static LineClassification _lineCSGClassification(Line line, CSGNode node, LinkedList<Matrix4f> stack) {
 		assert(node != null) : "Node cannot be null";
+		LineClassification result = null;
 		
 		if(node instanceof CSGCubeNode) {
-			
+			Matrix4f m = new Matrix4f();
+			m.setIdentity();
+			for(int i=0; i<stack.size(); i++) {
+				m.mul(stack.get(i));
+			}
+			//Do line cube intersection.
+			CSGCubeNode node_cube = (CSGCubeNode)node;
+			Cube cube = node_cube.getCube();
+
+			result = lineCubeIntersection(line, cube, m);
 		}
 		else if(node instanceof CSGTransformNode) {
-			
+			CSGTransformNode trans_node = (CSGTransformNode)node;
+			stack.addLast(trans_node.getTransformMatrix());
+			result = _lineCSGClassification(line, trans_node.getChild(), stack);
+			stack.removeLast();
 		}
 		else if(node instanceof CSGOpNode) {
+			CSGOpNode node_op = (CSGOpNode)node;
+			LineClassification c_left = _lineCSGClassification(line, node_op.getLeft(), stack);
+			LineClassification c_right = _lineCSGClassification(line, node_op.getRight(), stack);
 			
+			if(node_op.getOpCode() == CSGOpNode.OpCode.UNION)
+				result = c_left.union(c_right);
+			else if(node_op.getOpCode() == CSGOpNode.OpCode.DIFFERENCE)
+				result = c_left.difference(c_right);
+			else if(node_op.getOpCode() == CSGOpNode.OpCode.INTERSECTION)
+				result = c_left.intersection(c_right);
+			else
+				assert(false) : "Unknown OpCode";
 		}
 		
-		return null;
+		return result;
+	}
+	
+	private static LineClassification lineCubeIntersection(Line line, Cube cube, Matrix4f m) {
+		LineClassification result = new LineClassification(line);
+		Point3f center = cube.getCenter();
+		m.transform(center);
+		
+		//Init face
+		float front=center.z+cube.getZDimension(), back=center.z-cube.getZDimension();
+		float left=center.x-cube.getXDimension(), right=center.x+cube.getXDimension();
+		float up=center.y+cube.getYDimension(), down=center.y-cube.getZDimension();
+		
+		boolean isSet = false;
+		
+		Point3f s = line.getStartPointRaw(), e = line.getEndPointRaw();
+		float s_p = line.getStartParam(), e_p = line.getEndParam();
+		
+		//Intersect front and back
+		if(Math.abs(e.z-s.z) > 1e-5) {
+			if(s.y >= down && s.y <= up && s.x>=left && s.x<=right) {
+				float u_f = (front-s.z)/(e.z-s.z);
+				float u_b = (back-s.z)/(e.z-s.z);
+				if(u_f > u_b) {
+					float temp = u_f;
+					u_f = u_b;
+					u_b = temp;
+				}
+				if(u_f >= s_p && u_f <= e_p) {
+					if(Math.abs(s.x-left) < 1e-5 || Math.abs(s.x-right) < 1e-5)
+						result.add(u_f, LineClass.ON);
+					else
+						result.add(u_f, LineClass.IN);
+				}
+				else if(u_f < s_p) {
+					if(Math.abs(s.x-left) < 1e-5 || Math.abs(s.x-right) < 1e-5)
+						result.set(0, LineClass.ON);
+					else
+						result.set(0, LineClass.IN);
+				}
+				if(u_b >= s_p && u_b <= e_p) {
+					result.add(u_b, LineClass.OUT);
+				}
+				else if(u_b < s_p) {
+					result.set(0, LineClass.OUT);
+				}
+			}
+		}
+		//Intersect left and right
+		if(Math.abs(e.x - s.x) > 1e-5) {
+			assert(isSet == false) : "Line must be orthogonal";
+			if(s.y >= down && s.y <= up && s.z>=back && s.z<=front) {
+				float u_f = (left-s.x)/(e.x-s.x);
+				float u_b = (right-s.x)/(e.x-s.x);
+				if(u_f > u_b) {
+					float temp = u_f;
+					u_f = u_b;
+					u_b = temp;
+				}
+				if(u_f >= s_p && u_f <= e_p) {
+					if(Math.abs(s.z-front) < 1e-5 || Math.abs(s.z-back) < 1e-5)
+						result.add(u_f, LineClass.ON);
+					else
+						result.add(u_f, LineClass.IN);
+				}
+				else if(u_f < s_p) {
+					if(Math.abs(s.z-front) < 1e-5 || Math.abs(s.z-back) < 1e-5)
+						result.set(0, LineClass.ON);
+					else
+						result.set(0, LineClass.IN);
+				}
+				if(u_b >= s_p && u_b <= e_p) {
+					result.add(u_b, LineClass.OUT);
+				}
+				else if(u_b < s_p) {
+					result.set(0, LineClass.OUT);
+				}
+			}
+		}
+		//Intersect up and down
+		if(Math.abs(e.y - s.y) > 1e-5) {
+			assert(isSet == false) : "Line must be orthogonal";
+			if(s.z >= back && s.z <= front && s.x>=left && s.z<=right) {
+				float u_f = (up-s.y)/(e.y-s.y);
+				float u_b = (down-s.y)/(e.y-s.y);
+				if(u_f > u_b) {
+					float temp = u_f;
+					u_f = u_b;
+					u_b = temp;
+				}
+				if(u_f >= s_p && u_f <= e_p) {
+					if(Math.abs(s.y-up) < 1e-5 || Math.abs(s.y-down) < 1e-5)
+						result.add(u_f, LineClass.ON);
+					else
+						result.add(u_f, LineClass.IN);
+				}
+				else if(u_f < s_p) {
+					if(Math.abs(s.y-up) < 1e-5 || Math.abs(s.y-down) < 1e-5)
+						result.set(0, LineClass.ON);
+					else
+						result.set(0, LineClass.IN);
+				}
+				if(u_b >= s_p && u_b <= e_p) {
+					result.add(u_b, LineClass.OUT);
+				}
+				else if(u_b < s_p) {
+					result.set(0, LineClass.OUT);
+				}
+			}
+		}
+		assert(result.count()<=3);
+		
+		return result;
 	}
 }
 
