@@ -19,6 +19,7 @@ public class LineClassification {
 	
 	public LineClassification copy() {
 		LineClassification result = new LineClassification(line);
+		result.classes.clear();
 		for(int i=0; i<classes.size(); i++) {
 			Pair<Float, LineClass> cur = classes.get(i), n = new Pair<Float, LineClass>();
 			n.setFirst(cur.first());
@@ -96,7 +97,7 @@ public class LineClassification {
 			if(cur.second() == LineClass.IN) {
 				result.replace(cur.first(), next.first(), LineClass.IN);
 			}else if(cur.second() == LineClass.ON) {
-				int index = query(cur.first());
+				int index = result.query(cur.first());
 				Pair<Float, LineClass> p_index = result.get(index);
 				
 				if(p_index.second() == LineClass.OUT || p_index.second() == LineClass.ON) {
@@ -120,13 +121,73 @@ public class LineClassification {
 	}
 	
 	public LineClassification difference(LineClassification other) {
-		//stub
-		return null;
+		assert(this.line == other.line) : "Line must match.";
+		LineClassification result = this.copy();
+		
+		for(int i=0; i<other.classes.size()-1; i++) {
+			Pair<Float, LineClass> cur = other.classes.get(i);
+			Pair<Float, LineClass> next = other.classes.get(i+1);
+			if(cur.second() == LineClass.ON) {
+				result.replace(cur.first(), next.first(), LineClass.ON);
+			}
+			else if(cur.second() == LineClass.IN) {
+				int index = result.query(cur.first());
+				Pair<Float, LineClass> p_index = result.get(index);
+				if(p_index.second() == LineClass.IN) {
+					result.classes.add(index+1, new Pair<Float, LineClass>(cur.first(), LineClass.OUT));
+					index++;
+				}
+				else {
+					result.classes.add(index+1, new Pair<Float, LineClass>(cur.first(), LineClass.IN));
+					index++;
+				}
+				int end_index = result.query(next.first());
+				LineClass save = result.get(end_index).second();
+				for(int j=index+1; j<=end_index; j++) {
+					Pair<Float, LineClass> temp = result.classes.get(j);
+					if(temp.second() == LineClass.IN)
+						temp.setSecond(LineClass.OUT);
+					else 
+						temp.setSecond(LineClass.IN);
+				}
+				result.classes.add(end_index+1, new Pair<Float, LineClass>(next.first(), save));
+			}
+				
+		}
+		result.unify();
+		return result;
 	}
 	
 	public LineClassification intersection(LineClassification other) {
-		//stub
-		return null;
+		assert(this.line == other.line) : "Line must match.";
+		LineClassification result = this.copy();
+		
+		for(int i=0; i<other.classes.size()-1; i++) {
+			Pair<Float, LineClass> cur = other.classes.get(i);
+			Pair<Float, LineClass> next = other.classes.get(i+1);
+			if(cur.second() == LineClass.OUT) {
+				result.replace(cur.first(), next.first(), LineClass.OUT);
+			}
+			else if(cur.second() == LineClass.ON) {
+				int index = result.query(cur.first());
+				Pair<Float, LineClass> p_index = result.get(index);
+				if(p_index.second() == LineClass.IN) {
+					result.classes.add(index+1  , new Pair<Float, LineClass>(cur.first(), LineClass.ON));
+					index++;
+				}
+				int end_index = result.query(next.first());
+				LineClass save = result.get(end_index).second();
+				for(int j=index+1; j<=end_index; j++) {
+					Pair<Float, LineClass> temp = result.classes.get(j);
+					if(temp.second() == LineClass.IN)
+						temp.setSecond(LineClass.ON);
+				}
+				result.classes.add(end_index+1, new Pair<Float, LineClass>(next.first(), save));
+			}
+		}
+
+		result.unify();
+		return result;
 	}
 
 	public void replace(float start, float end, LineClass c) {
@@ -153,7 +214,7 @@ public class LineClassification {
 			Pair<Float, LineClass> prev = classes.get(i-1);
 			Pair<Float, LineClass> cur = classes.get(i);
 			if(cur.second() == prev.second() || 
-			   cur.first() == prev.first()) {
+			   Math.abs(cur.first()-prev.first()) < 1e-5) {
 				classes.remove(i);
 			}
 			else
@@ -198,10 +259,13 @@ public class LineClassification {
 		Line l = new Line(start, end);
 		LineClassification c1 = new LineClassification(l);
 		c1.add(0.1f, LineClass.IN);
+		c1.add(0.4f, LineClass.OUT);
+		c1.add(0.5f, LineClass.IN);
 		LineClassification c2 = new LineClassification(l);
-		c2.add(0.2f, LineClass.OUT);
+		c2.add(0.3f, LineClass.IN);
+		c2.add(0.7f, LineClass.OUT);
 		
-		LineClassification result = c1.union(c2);
+		LineClassification result = c1.intersection(c2);
 		System.out.println(result.toString());
 	}
 }
