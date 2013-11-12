@@ -21,13 +21,13 @@ public class CSGOperation {
 			CSGOpNode node_op = (CSGOpNode)node;
 			if(node_op.getOpCode() == CSGOpNode.OpCode.INTERSECTION) {
 				result = calculateBoundingSphere(node_op.getLeft());
-				result.intersect(calculateBoundingSphere(node_op.getRight()));
+				result = result.intersect(calculateBoundingSphere(node_op.getRight()));
 			}
 			//Ignore the margin case
 			else if(node_op.getOpCode() == CSGOpNode.OpCode.UNION ||
 					node_op.getOpCode() == CSGOpNode.OpCode.DIFFERENCE) {
 				result = calculateBoundingSphere(node_op.getLeft());
-				result.union(calculateBoundingSphere(node_op.getRight()));
+				result =result.union(calculateBoundingSphere(node_op.getRight()));
 			}
 		}
 		else if(node instanceof CSGTransformNode) {
@@ -205,14 +205,15 @@ public class CSGOperation {
 		m.transform(center);
 		
 		//Init face
-		float front=center.z+cube.getZDimension(), back=center.z-cube.getZDimension();
-		float left=center.x-cube.getXDimension(), right=center.x+cube.getXDimension();
-		float up=center.y+cube.getYDimension(), down=center.y-cube.getZDimension();
+		float epsilon = (float) 1e-6;
+		float front=center.z+cube.getZDimension()+epsilon, back=center.z-cube.getZDimension()-epsilon;
+		float left=center.x-cube.getXDimension()-epsilon, right=center.x+cube.getXDimension()+epsilon;
+		float up=center.y+cube.getYDimension()+epsilon, down=center.y-cube.getZDimension()-epsilon;
 		
 		boolean isSet = false;
 		
 		Point3f s = line.getStartPointRaw(), e = line.getEndPointRaw();
-		float s_p = line.getStartParam(), e_p = line.getEndParam();
+		float s_p = line.getStartParam()-(float)1e-5, e_p = line.getEndParam()+(float)1e-5;
 		
 		//Intersect front and back
 		if(Math.abs(e.z-s.z) > 1e-5) {
@@ -225,13 +226,13 @@ public class CSGOperation {
 					u_b = temp;
 				}
 				if(u_f >= s_p && u_f <= e_p) {
-					if(Math.abs(s.x-left) < 1e-5 || Math.abs(s.x-right) < 1e-5)
+					if(Math.abs(s.x-left) < 1e-4 || Math.abs(s.x-right) < 1e-4)
 						result.add(u_f, LineClass.ON);
 					else
 						result.add(u_f, LineClass.IN);
 				}
 				else if(u_f < s_p) {
-					if(Math.abs(s.x-left) < 1e-5 || Math.abs(s.x-right) < 1e-5)
+					if(Math.abs(s.x-left) < 1e-4 || Math.abs(s.x-right) < 1e-4)
 						result.set(0, LineClass.ON);
 					else
 						result.set(0, LineClass.IN);
@@ -256,13 +257,13 @@ public class CSGOperation {
 					u_b = temp;
 				}
 				if(u_f >= s_p && u_f <= e_p) {
-					if(Math.abs(s.z-front) < 1e-5 || Math.abs(s.z-back) < 1e-5)
+					if(Math.abs(s.z-front) < 1e-4 || Math.abs(s.z-back) < 1e-4)
 						result.add(u_f, LineClass.ON);
 					else
 						result.add(u_f, LineClass.IN);
 				}
 				else if(u_f < s_p) {
-					if(Math.abs(s.z-front) < 1e-5 || Math.abs(s.z-back) < 1e-5)
+					if(Math.abs(s.z-front) < 1e-4 || Math.abs(s.z-back) < 1e-4)
 						result.set(0, LineClass.ON);
 					else
 						result.set(0, LineClass.IN);
@@ -278,7 +279,7 @@ public class CSGOperation {
 		//Intersect up and down
 		if(Math.abs(e.y - s.y) > 1e-5) {
 			assert(isSet == false) : "Line must be orthogonal";
-			if(s.z >= back && s.z <= front && s.x>=left && s.z<=right) {
+			if(s.z >= back && s.z <= front && s.x>=left && s.x<=right) {
 				float u_f = (up-s.y)/(e.y-s.y);
 				float u_b = (down-s.y)/(e.y-s.y);
 				if(u_f > u_b) {
@@ -287,13 +288,13 @@ public class CSGOperation {
 					u_b = temp;
 				}
 				if(u_f >= s_p && u_f <= e_p) {
-					if(Math.abs(s.y-up) < 1e-5 || Math.abs(s.y-down) < 1e-5)
+					if(Math.abs(s.y-up) < 1e-4 || Math.abs(s.y-down) < 1e-4)
 						result.add(u_f, LineClass.ON);
 					else
 						result.add(u_f, LineClass.IN);
 				}
 				else if(u_f < s_p) {
-					if(Math.abs(s.y-up) < 1e-5 || Math.abs(s.y-down) < 1e-5)
+					if(Math.abs(s.y-up) < 1e-4 || Math.abs(s.y-down) < 1e-4)
 						result.set(0, LineClass.ON);
 					else
 						result.set(0, LineClass.IN);
@@ -308,8 +309,23 @@ public class CSGOperation {
 		}
 		assert(result.count()<=3);
 		
+		result.unify();
 		return result;
 	}
+	
+	/* for test use
+	public static void main(String[] argv) {
+		Cube cube = new Cube(0.5f, 0.5f, 0.5f);
+		Point3f start = new Point3f(0.0f, 0.5f, 0.5f);
+		Point3f end = new Point3f(1.5f, 0.5f, 0.5f);
+		Line line = new Line(start, end);
+		
+		Matrix4f m = new Matrix4f();
+		m.setIdentity();
+		LineClassification result = lineCubeIntersection(line, cube, m);
+		System.out.println(result.toString());
+	}
+	*/
 }
 
 

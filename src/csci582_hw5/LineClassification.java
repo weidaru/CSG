@@ -2,8 +2,6 @@ package csci582_hw5;
 
 import java.util.LinkedList;
 
-import javax.vecmath.Point3f;
-
 public class LineClassification {
 	public enum LineClass {IN, ON, OUT, END};
 	//Close, Open
@@ -30,7 +28,7 @@ public class LineClassification {
 	}
 	
 	public int query(float param) {
-		if(param < line.getStartParam() || param > line.getEndParam())
+		if(param < line.getStartParam()-1e-5 || param > line.getEndParam()+1e-5)
 			return -1;
 		for(int i=1; i<classes.size(); i++) {
 			Pair<Float, LineClass> pair = classes.get(i);
@@ -137,10 +135,6 @@ public class LineClassification {
 					result.classes.add(index+1, new Pair<Float, LineClass>(cur.first(), LineClass.OUT));
 					index++;
 				}
-				else {
-					result.classes.add(index+1, new Pair<Float, LineClass>(cur.first(), LineClass.IN));
-					index++;
-				}
 				int end_index = result.query(next.first());
 				LineClass save = result.get(end_index).second();
 				for(int j=index+1; j<=end_index; j++) {
@@ -192,30 +186,30 @@ public class LineClassification {
 
 	public void replace(float start, float end, LineClass c) {
 		int index = query(start);
+		LineClass save = classes.get(query(end)).second();
 		classes.add(index+1, new Pair<Float, LineClass>(start, c));
 		index++;
-		
-		float new_end = get(index+1).first();
-		new_end = new_end > end ? new_end : end;
-		
+
 		for(int j=index+1; j<classes.size(); j++) {
-			if(classes.get(j).first() >= new_end ) {
-				LineClass save = classes.get(j-1).second();
+			if(classes.get(j).first() >= end ) {
+				
 				for(int k=index+1; k<j; k++)
 					classes.remove(index+1);
-				classes.add(index+1, new Pair<Float, LineClass>(new_end,save));
+				classes.add(index+1, new Pair<Float, LineClass>(end,save));
 				break;
 			}
 		}
 	}
 	
 	public void unify() {
-		for(int i=1; i<classes.size()-1; ) {
+		for(int i=1; i<classes.size(); ) {
 			Pair<Float, LineClass> prev = classes.get(i-1);
 			Pair<Float, LineClass> cur = classes.get(i);
-			if(cur.second() == prev.second() || 
-			   Math.abs(cur.first()-prev.first()) < 1e-5) {
+			if(cur.second() == prev.second()) {
 				classes.remove(i);
+			}
+			else if(Math.abs(cur.first()-prev.first()) < 1e-5) {
+				classes.remove(i-1);
 			}
 			else
 				i++;
@@ -253,6 +247,7 @@ public class LineClassification {
 		return sb.toString();
 	}
 	
+	/* for test use
 	public static void main(String[] argv) {
 		Point3f start = new Point3f(0.0f, 0.0f, 0.0f);
 		Point3f end = new Point3f(1.0f, 0.0f, 0.0f);
@@ -268,6 +263,7 @@ public class LineClassification {
 		LineClassification result = c1.intersection(c2);
 		System.out.println(result.toString());
 	}
+	*/
 }
 
 

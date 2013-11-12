@@ -43,7 +43,7 @@ public class CSGCache {
 			if(pair.second() != null)
 				return pair.second();
 			else {
-				pair.setSecond(CSGOperation.generateDebugGroup(pair.first()));
+				pair.setSecond(CSGOperation.generateGroup(pair.first()));
 				return pair.second();
 			}
 		}

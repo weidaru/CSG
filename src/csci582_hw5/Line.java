@@ -64,7 +64,7 @@ public class Line {
 	}
 	
 	public Line copy() {
-		Line c = new Line(startPoint, startPoint).
+		Line c = new Line(startPoint, endPoint).
 				setStartParam(startParam).
 				setEndParam(endParam);
 		return c;

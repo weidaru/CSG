@@ -178,13 +178,9 @@ public class A5 extends JFrame {
 		matrix.m23 = 0.05f;
 		setMatrix("a", matrix);
 		move("a", "a", "b");
-		move("b", "a", "c");
-		move("c", "a", "d");
+		union("b", "a", "c");
 		
-		display("a");
-		display("b");
 		display("c");
-		display("d");
 	}
 	
 	public A5() {
