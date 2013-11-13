@@ -1,4 +1,6 @@
-package csci582_hw5;
+package csci582_hw5.csg;
+
+import csci582_hw5.Cube;
 
 
 public class CSGCubeNode implements CSGNode {

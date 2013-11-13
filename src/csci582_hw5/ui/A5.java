@@ -22,12 +22,12 @@ import javax.vecmath.Color3f;
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 
-import csci582_hw5.CSGBuilder;
-import csci582_hw5.CSGCache;
-import csci582_hw5.CSGNode;
-import csci582_hw5.CSGOperation;
 import csci582_hw5.SimpleViewer;
 import csci582_hw5.Sphere;
+import csci582_hw5.csg.CSGBuilder;
+import csci582_hw5.csg.CSGCache;
+import csci582_hw5.csg.CSGNode;
+import csci582_hw5.csg.CSGOperation;
 
 public class A5 extends JFrame {
 	//MenuBar	 		menu level 1

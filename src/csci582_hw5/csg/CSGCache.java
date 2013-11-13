@@ -1,9 +1,11 @@
-package csci582_hw5;
+package csci582_hw5.csg;
 
 import java.util.Map;
 import java.util.TreeMap;
 
 import javax.media.j3d.Group;
+
+import csci582_hw5.Pair;
 
 public class CSGCache {
 	private Map<String, Pair<CSGNode, Group>> data;

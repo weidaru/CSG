@@ -1,4 +1,4 @@
-package csci582_hw5;
+package csci582_hw5.csg;
 
 import javax.vecmath.Matrix4f;
 

@@ -1,4 +1,4 @@
-package csci582_hw5;
+package csci582_hw5.csg;
 
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -9,6 +9,11 @@ import javax.media.j3d.TransformGroup;
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 
+import csci582_hw5.Cube;
+import csci582_hw5.CubeFace;
+import csci582_hw5.Line;
+import csci582_hw5.LineClassification;
+import csci582_hw5.Sphere;
 import csci582_hw5.LineClassification.LineClass;
 
 /**

@@ -1,4 +1,4 @@
-package csci582_hw5;
+package csci582_hw5.csg;
 
 public class CSGOpNode implements CSGNode {
 	public enum OpCode { UNION, DIFFERENCE, INTERSECTION };

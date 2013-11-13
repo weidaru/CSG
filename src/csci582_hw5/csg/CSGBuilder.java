@@ -1,6 +1,8 @@
-package csci582_hw5;
+package csci582_hw5.csg;
 
 import javax.vecmath.Matrix4f;
+
+import csci582_hw5.Cube;
 
 
 public class CSGBuilder {
