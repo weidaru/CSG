@@ -173,14 +173,21 @@ public class A5 extends JFrame {
 		addCube("a", 0.1f, 0.1f, 0.1f);
 		Matrix4f matrix = new Matrix4f();
 		matrix.setIdentity();
-		matrix.m03 = 0.1f;
+		matrix.m03 = 0.05f;
 		matrix.m13 = 0.05f;
 		matrix.m23 = 0.05f;
 		setMatrix("a", matrix);
 		move("a", "a", "b");
-		union("b", "a", "c");
+		move("b", "a", "c");
 		
-		display("c");
+		union("a","b","d");
+		union("d", "c", "e");
+		
+		//display("b");
+		//display("c");
+
+		display("e");
+
 	}
 	
 	public A5() {

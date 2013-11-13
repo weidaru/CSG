@@ -30,7 +30,7 @@ public class Sphere {
 		}
 		float distance = this.center.distance(other.center);
 		float radius = (distance + this.radius + other.radius)/2.0f;
-		if(distance < Math.abs(this.radius-other.radius)) {
+		if(distance <= Math.abs(this.radius-other.radius)) {
 			if(this.radius > other.radius)
 				this.copyTo(result);
 			else
@@ -68,19 +68,19 @@ public class Sphere {
 		float r2 = other.radius;
 		if(d >= r1+r2)
 			return result;
+		else if(d <= Math.abs(r1-r2)) {
+			if(this.radius < other.radius)
+				this.copyTo(result);
+			else
+				other.copyTo(result);
+			return result;
+		}
 		
-		float cos = (r1*r1 + d*d - r2*r2)/(2.0f * d* r1);
-		float sin = (float)Math.sqrt(1.0-cos*cos);
-		result.radius = sin * r1;
-		float vec[] = {
-				(other.center.x - this.center.x)/d,
-				(other.center.y - this.center.y)/d,
-				(other.center.z - this.center.z)/d
-		};
-		float temp = r1*cos;
-		result.center.x = this.center.x + vec[0] * temp;
-		result.center.y = this.center.y + vec[1] * temp;
-		result.center.z = this.center.z + vec[2] *temp;
+		result.center.x = (this.center.x+other.center.x)/2.0f;
+		result.center.y = (this.center.y+other.center.y)/2.0f;
+		result.center.z = (this.center.z+other.center.z)/2.0f;
+		
+		result.radius = (this.radius + other.radius)/2.0f;
 
 		return result;
 	}

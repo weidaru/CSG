@@ -1,5 +1,6 @@
 package csci582_hw5;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 
 import javax.media.j3d.Group;
@@ -10,6 +11,10 @@ import javax.vecmath.Point3f;
 
 import csci582_hw5.LineClassification.LineClass;
 
+/**
+ * Here are all kinds of operations(visitors) we can apply on CSGNode.
+ * Since everything is state less, they are implemented as static functions.
+ */
 public class CSGOperation {
 	public static Sphere calculateBoundingSphere(CSGNode node) {
 		if(node == null)
@@ -105,7 +110,12 @@ public class CSGOperation {
 		LinkedList<Matrix4f> transformStack = new LinkedList<Matrix4f>();
 		
 		gatherEdges(node, edges, transformStack);
-
+		
+		transformStack.clear();
+		LinkedList<CubeFace> cubes = new LinkedList<CubeFace>();
+		gatherCubes(node, cubes, transformStack);
+		gatherCubeIntersection(cubes, edges);
+		
 		TransformGroup group = new TransformGroup();
 		while(!edges.isEmpty()) {
 			Line cur = edges.poll();
@@ -117,6 +127,282 @@ public class CSGOperation {
 		}
 		
 		return group;
+	}
+	
+	//assume line and cube are orthogonal
+	public static LineClassification lineCSGClassification(Line line, CSGNode node) {
+		LinkedList<Matrix4f> stack = new LinkedList<Matrix4f>();
+
+		return _lineCSGClassification(line, node, stack);
+	}
+	
+	/*** Implementation details. ***/
+	
+	private static boolean isBetween(float a, float start, float end) {
+		float epsilon = (float)1e-5;
+		assert(start <= end);
+		if(a-start > epsilon && end-a > epsilon)
+			return true;
+		else
+			return false;
+	}
+	
+	//Margin case are not considered here.
+	private static void gatherCubeIntersection(LinkedList<CubeFace> cubes, LinkedList<Line> edges) {
+		for(int i=0; i<cubes.size(); i++) {
+			CubeFace cur = cubes.get(i);
+			for(int j=i; j<cubes.size(); j++) {
+				CubeFace other = cubes.get(j);
+				//Front
+				if(isBetween(cur.front, other.back, other.front)) {
+					if(isBetween(other.left, cur.left, cur.right)) {
+						float[] temp = {cur.up, cur.down, other.up, other.down};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(other.left, temp[1], cur.front);
+						Point3f end = new Point3f(other.left, temp[2], cur.front);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.right, cur.left, cur.right)) {
+						float[] temp = {cur.up, cur.down, other.up, other.down};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(other.right, temp[1], cur.front);
+						Point3f end = new Point3f(other.right, temp[2], cur.front);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.up, cur.down, cur.up)) {
+						float[] temp = {cur.left, cur.right, other.left, other.right};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(temp[1], other.up, cur.front);
+						Point3f end = new Point3f(temp[2], other.up, cur.front);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.down, cur.down, cur.up)) {
+						float[] temp = {cur.left, cur.right, other.left, other.right};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(temp[1], other.down, cur.front);
+						Point3f end = new Point3f(temp[2], other.down, cur.front);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+
+				}
+				//Back
+				if(isBetween(cur.back, other.back, other.front)) {
+					if(isBetween(other.left, cur.left, cur.right)) {
+						float[] temp = {cur.up, cur.down, other.up, other.down};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(other.left, temp[1], cur.back);
+						Point3f end = new Point3f(other.left, temp[2], cur.back);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.right, cur.left, cur.right)) {
+						float[] temp = {cur.up, cur.down, other.up, other.down};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(other.right, temp[1], cur.back);
+						Point3f end = new Point3f(other.right, temp[2], cur.back);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.up, cur.down, cur.up)) {
+						float[] temp = {cur.left, cur.right, other.left, other.right};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(temp[1], other.up, cur.back);
+						Point3f end = new Point3f(temp[2], other.up, cur.back);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.down, cur.down, cur.up)) {
+						float[] temp = {cur.left, cur.right, other.left, other.right};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(temp[1], other.down, cur.back);
+						Point3f end = new Point3f(temp[2], other.down, cur.back);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+				}
+				//Up
+				if(isBetween(cur.up, other.down, other.up)) {
+					if(isBetween(other.left, cur.left, cur.right)) {
+						float[] temp = {cur.front, cur.back, other.front, other.back};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(other.left, cur.up, temp[1]);
+						Point3f end = new Point3f(other.left, cur.up, temp[2]);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.right, cur.left, cur.right)) {
+						float[] temp = {cur.front, cur.back, other.front, other.back};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(other.right, cur.up, temp[1]);
+						Point3f end = new Point3f(other.right, cur.up, temp[2]);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.front, cur.back, cur.front)) {
+						float[] temp = {cur.left, cur.right, other.left, other.right};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(temp[1], cur.up, other.front);
+						Point3f end = new Point3f(temp[2], cur.up, other.front);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.back, cur.back, cur.front)) {
+						float[] temp = {cur.left, cur.right, other.left, other.right};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(temp[1], cur.up, other.back);
+						Point3f end = new Point3f(temp[2], cur.up, other.back);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+				}
+				//Down
+				if(isBetween(cur.down, other.down, other.up)) {
+					if(isBetween(other.left, cur.left, cur.right)) {
+						float[] temp = {cur.front, cur.back, other.front, other.back};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(other.left, cur.down, temp[1]);
+						Point3f end = new Point3f(other.left, cur.down, temp[2]);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.right, cur.left, cur.right)) {
+						float[] temp = {cur.front, cur.back, other.front, other.back};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(other.right, cur.down, temp[1]);
+						Point3f end = new Point3f(other.right, cur.down, temp[2]);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.front, cur.back, cur.front)) {
+						float[] temp = {cur.left, cur.right, other.left, other.right};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(temp[1], cur.down, other.front);
+						Point3f end = new Point3f(temp[2], cur.down, other.front);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.back, cur.back, cur.front)) {
+						float[] temp = {cur.left, cur.right, other.left, other.right};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(temp[1], cur.down, other.back);
+						Point3f end = new Point3f(temp[2], cur.down, other.back);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+				}
+				//Left
+				if(isBetween(cur.left, other.left, other.right)) {
+					if(isBetween(other.front, cur.back, cur.front)) {
+						float[] temp = {cur.up, cur.down, other.up, other.down};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(cur.left, temp[1], other.front);
+						Point3f end = new Point3f(cur.left, temp[2], other.front);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.back, cur.back, cur.front)) {
+						float[] temp = {cur.up, cur.down, other.up, other.down};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(cur.left, temp[1], other.back);
+						Point3f end = new Point3f(cur.left, temp[2], other.back);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.up, cur.down, cur.up)) {
+						float[] temp = {cur.front, cur.back, other.front, other.back};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(cur.left, other.up, temp[1]);
+						Point3f end = new Point3f(cur.left, other.up, temp[2]);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.down, cur.down, cur.up)) {
+						float[] temp = {cur.front, cur.back, other.front, other.back};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(cur.left, other.down, temp[1]);
+						Point3f end = new Point3f(cur.left, other.down, temp[2]);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+				}
+				//Right
+				if(isBetween(cur.right, other.left, other.right)) {
+					if(isBetween(other.front, cur.back, cur.front)) {
+						float[] temp = {cur.up, cur.down, other.up, other.down};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(cur.right, temp[1], other.front);
+						Point3f end = new Point3f(cur.right, temp[2], other.front);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.back, cur.back, cur.front)) {
+						float[] temp = {cur.up, cur.down, other.up, other.down};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(cur.right, temp[1], other.back);
+						Point3f end = new Point3f(cur.right, temp[2], other.back);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.up, cur.down, cur.up)) {
+						float[] temp = {cur.front, cur.back, other.front, other.back};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(cur.right, other.up, temp[1]);
+						Point3f end = new Point3f(cur.right, other.up, temp[2]);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+					if(isBetween(other.down, cur.down, cur.up)) {
+						float[] temp = {cur.front, cur.back, other.front, other.back};
+						Arrays.sort(temp);
+						Point3f start = new Point3f(cur.right, other.down, temp[1]);
+						Point3f end = new Point3f(cur.right, other.down, temp[2]);
+						Line l = new Line(start, end);
+						edges.add(l);
+					}
+				}
+			}
+		}
+	}
+	
+	private static void gatherCubes(CSGNode cur, LinkedList<CubeFace> cubes, LinkedList<Matrix4f> stack) {
+		if(cur == null)
+			return;
+		if(cur instanceof CSGCubeNode) {
+			Matrix4f m = new Matrix4f();
+			m.setIdentity();
+			for(int i=0; i<stack.size(); i++) {
+				m.mul(stack.get(i));
+			}
+			CSGCubeNode cur_cube = (CSGCubeNode)cur;
+			Cube c =  cur_cube.getCube();
+			Point3f center = c.getCenter();
+			m.transform(center);
+			CubeFace cf = new CubeFace();
+			cf.front=center.z+c.getZDimension();
+			cf.back=center.z-c.getZDimension();
+			cf.left=center.x-c.getXDimension();
+			cf.right=center.x+c.getXDimension();
+			cf.up=center.y+c.getYDimension();
+			cf.down=center.y-c.getZDimension();
+			cubes.add(cf);
+		}
+		else if(cur instanceof CSGTransformNode) {
+			CSGTransformNode cur_trans = (CSGTransformNode)cur;
+			stack.addLast(cur_trans.getTransformMatrix());
+			gatherCubes(cur_trans.getChild(), cubes, stack);
+			stack.removeLast();
+		}
+		else if(cur instanceof CSGOpNode) {
+			CSGOpNode cur_op = (CSGOpNode)cur;
+			gatherCubes(cur_op.getLeft(), cubes, stack);
+			gatherCubes(cur_op.getRight(), cubes, stack);
+		}
+		else
+			assert(false) : "Unknown CSGNode type " + cur.getClass().getName();
 	}
 	
 	//All the edges get copyed and transformed.
@@ -152,12 +438,7 @@ public class CSGOperation {
 			assert(false) : "Unknown CSGNode type " + cur.getClass().getName();
 	}
 	
-	//assume line and cube are orthogonal
-	public static LineClassification lineCSGClassification(Line line, CSGNode node) {
-		LinkedList<Matrix4f> stack = new LinkedList<Matrix4f>();
 
-		return _lineCSGClassification(line, node, stack);
-	}
 	
 	private static LineClassification _lineCSGClassification(Line line, CSGNode node, LinkedList<Matrix4f> stack) {
 		assert(node != null) : "Node cannot be null";
@@ -226,13 +507,15 @@ public class CSGOperation {
 					u_b = temp;
 				}
 				if(u_f >= s_p && u_f <= e_p) {
-					if(Math.abs(s.x-left) < 1e-4 || Math.abs(s.x-right) < 1e-4)
+					if(Math.abs(s.x-left) < 1e-4 || Math.abs(s.x-right) < 1e-4 ||
+					   Math.abs(s.y-up) < 1e-4 || Math.abs(s.y-down) < 1e-4)
 						result.add(u_f, LineClass.ON);
 					else
 						result.add(u_f, LineClass.IN);
 				}
 				else if(u_f < s_p) {
-					if(Math.abs(s.x-left) < 1e-4 || Math.abs(s.x-right) < 1e-4)
+					if(Math.abs(s.x-left) < 1e-4 || Math.abs(s.x-right) < 1e-4 ||
+					   Math.abs(s.y-up) < 1e-4 || Math.abs(s.y-down) < 1e-4)
 						result.set(0, LineClass.ON);
 					else
 						result.set(0, LineClass.IN);
@@ -257,13 +540,15 @@ public class CSGOperation {
 					u_b = temp;
 				}
 				if(u_f >= s_p && u_f <= e_p) {
-					if(Math.abs(s.z-front) < 1e-4 || Math.abs(s.z-back) < 1e-4)
+					if(Math.abs(s.z-front) < 1e-4 || Math.abs(s.z-back) < 1e-4 ||
+					   Math.abs(s.y-up) < 1e-4 || Math.abs(s.y-down) < 1e-4)
 						result.add(u_f, LineClass.ON);
 					else
 						result.add(u_f, LineClass.IN);
 				}
 				else if(u_f < s_p) {
-					if(Math.abs(s.z-front) < 1e-4 || Math.abs(s.z-back) < 1e-4)
+					if(Math.abs(s.z-front) < 1e-4 || Math.abs(s.z-back) < 1e-4 ||
+					   Math.abs(s.y-up) < 1e-4 || Math.abs(s.y-down) < 1e-4)
 						result.set(0, LineClass.ON);
 					else
 						result.set(0, LineClass.IN);
@@ -288,13 +573,15 @@ public class CSGOperation {
 					u_b = temp;
 				}
 				if(u_f >= s_p && u_f <= e_p) {
-					if(Math.abs(s.y-up) < 1e-4 || Math.abs(s.y-down) < 1e-4)
+					if(Math.abs(s.z-front) < 1e-4 || Math.abs(s.z-back) < 1e-4 ||
+					   Math.abs(s.x-left) < 1e-4 || Math.abs(s.x-right) < 1e-4)
 						result.add(u_f, LineClass.ON);
 					else
 						result.add(u_f, LineClass.IN);
 				}
 				else if(u_f < s_p) {
-					if(Math.abs(s.y-up) < 1e-4 || Math.abs(s.y-down) < 1e-4)
+					if(Math.abs(s.z-front) < 1e-4 || Math.abs(s.z-back) < 1e-4 ||
+					   Math.abs(s.x-left) < 1e-4 || Math.abs(s.x-right) < 1e-4)
 						result.set(0, LineClass.ON);
 					else
 						result.set(0, LineClass.IN);
