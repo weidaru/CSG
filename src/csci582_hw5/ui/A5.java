@@ -5,6 +5,8 @@ import java.awt.Point;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -14,6 +16,7 @@ import javax.media.j3d.ColoringAttributes;
 import javax.media.j3d.Group;
 import javax.media.j3d.LineArray;
 import javax.media.j3d.Shape3D;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -37,6 +40,7 @@ public class A5 extends JFrame {
 	private JMenu viewMenu;
 	private JMenu transformMenu;
 	private JMenu objectMenu;
+	private JMenu planMenu;
 	
 	//MenuItem			menu level 3
 	private JMenuItem exitMenuItem;
@@ -52,7 +56,10 @@ public class A5 extends JFrame {
 	private JMenuItem differenceMenuItem;
 	private JMenuItem intersectionMenuItem;
 	private JMenuItem displayMenuItem;
+	private JCheckBoxMenuItem roadmapMenuItem;
 	private JMenuItem eraseMenuItem;
+	private JMenuItem sceneMenuItem;
+	private JMenuItem endpointsMenuItem;
 	
 	private SimpleViewer display;
 	
@@ -228,6 +235,9 @@ public class A5 extends JFrame {
 		menuBar.add(transformMenu);
 		menuBar.add(objectMenu);
 		
+		planMenu.add(sceneMenuItem);
+		planMenu.add(endpointsMenuItem);
+		
 		setJMenuBar(menuBar);
 
 		//Other stuffs
@@ -303,6 +313,7 @@ public class A5 extends JFrame {
 		viewMenu = new JMenu("View");
 		transformMenu = new JMenu("Transform");
 		objectMenu = new JMenu("Object");
+		planMenu = new JMenu("Plan");
 	}
 	
 	private void initMenuLevel3() {
@@ -464,6 +475,20 @@ public class A5 extends JFrame {
 			}
 		});
 		
+		roadmapMenuItem = new JCheckBoxMenuItem();
+		roadmapMenuItem.addItemListener(new ItemListener() {
+			@Override
+			public void itemStateChanged(ItemEvent arg0) {
+				if(roadmapMenuItem.isSelected()) {
+					assert(false) : "Stub";
+				}
+				else {
+					assert(false) : "Stub";
+				}
+			}
+		});
+		
+		
 		eraseMenuItem = new JMenuItem("Erase");
 		eraseMenuItem.addActionListener(new ActionListener() {
 			
@@ -551,6 +576,23 @@ public class A5 extends JFrame {
 			}
 		});
 		
+		sceneMenuItem = new JMenuItem("Scene");
+		sceneMenuItem.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				assert(false) : "STUB";
+			}
+		});
+		
+		endpointsMenuItem = new JMenuItem("EndPoints");
+		endpointsMenuItem.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				assert(false) : "STUB";
+			}
+		});
 	}
 	
 	public static void main(String[] argv) {
