@@ -16,6 +16,10 @@ public class Line {
 		this.endParam = 1.0f;
 	}
 	
+	public float length() {
+		return getStartPoint().distance(getEndPoint());
+	}
+	
 	public float getStartParam() {
 		return startParam;
 	}

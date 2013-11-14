@@ -21,6 +21,8 @@ import csci582_hw5.LineClassification.LineClass;
  * Since everything is state less, they are implemented as static functions.
  */
 public class CSGOperation {
+	public enum PointClass {IN, OUT, ON};
+	
 	public static Sphere calculateBoundingSphere(CSGNode node) {
 		if(node == null)
 			return new Sphere();
@@ -141,6 +143,12 @@ public class CSGOperation {
 		return _lineCSGClassification(line, node, stack);
 	}
 	
+	public static PointClass pointCSGClassification(Point3f point, CSGNode node) {
+		LinkedList<Matrix4f> stack = new LinkedList<Matrix4f>();
+		
+		return _pointCSGClassification(point, node, stack);
+	}
+	
 	/*** Implementation details. ***/
 	
 	private static boolean isBetween(float a, float start, float end) {
@@ -150,6 +158,10 @@ public class CSGOperation {
 			return true;
 		else
 			return false;
+	}
+	
+	private static boolean isOn(float a, float b) {
+		return Math.abs(a-b) < 1e-5;
 	}
 	
 	//Margin case are not considered here.
@@ -602,6 +614,120 @@ public class CSGOperation {
 		assert(result.count()<=3);
 		
 		result.unify();
+		return result;
+	}
+	
+	private static PointClass _pointCSGClassification(Point3f point, CSGNode node, LinkedList<Matrix4f> stack) {
+		assert(node != null) : "Node cannot be null";
+		PointClass result = null;
+		
+		if(node instanceof CSGCubeNode) {
+			Matrix4f m = new Matrix4f();
+			m.setIdentity();
+			for(int i=0; i<stack.size(); i++) {
+				m.mul(stack.get(i));
+			}
+			//Do line cube intersection.
+			CSGCubeNode node_cube = (CSGCubeNode)node;
+			Cube cube = node_cube.getCube();
+			Point3f center = cube.getCenter();
+			m.transform(center);
+			float left = center.x-cube.getXDimension(), right = center.x+cube.getXDimension();
+			float down = center.y-cube.getYDimension(), up = center.y+cube.getYDimension();
+			float back = center.z-cube.getZDimension(), front = center.z+cube.getZDimension();
+			
+			result = PointClass.OUT;
+			if(isBetween(point.x, left, right) && isBetween(point.y, down, up) && isBetween(point.z, back, front)) {
+				result = PointClass.IN;
+			}
+			//Left
+			if(isOn(point.x, left) && isBetween(point.y, down, up) && isBetween(point.z, back, front)) {
+				result = PointClass.ON;
+			}
+			//Right
+			if(isOn(point.x, right) && isBetween(point.y, down, up) && isBetween(point.z, back, front)) {
+				result = PointClass.ON;
+			}
+			//Down
+			if(isOn(point.y, down) && isBetween(point.x, left, right) && isBetween(point.z, back, front)) {
+				result = PointClass.ON;
+			}
+			//UP
+			if(isOn(point.y, up) && isBetween(point.x, left, right) && isBetween(point.z, back, front)) {
+				result = PointClass.ON;
+			}
+			//Back
+			if(isOn(point.z, back) && isBetween(point.x, left, right) && isBetween(point.y, down, up)) {
+				result = PointClass.ON;
+			}
+			//Front
+			if(isOn(point.z, front) && isBetween(point.x, left, right) && isBetween(point.y, down, up)) {
+				result = PointClass.ON;
+			}
+		}
+		else if(node instanceof CSGTransformNode) {
+			CSGTransformNode trans_node = (CSGTransformNode)node;
+			stack.addLast(trans_node.getTransformMatrix());
+			result = _pointCSGClassification(point, trans_node.getChild(), stack);
+			stack.removeLast();
+		}
+		else if(node instanceof CSGOpNode) {
+			CSGOpNode node_op = (CSGOpNode)node;
+			PointClass c_left = _pointCSGClassification(point, node_op.getLeft(), stack);
+			PointClass c_right = _pointCSGClassification(point, node_op.getRight(), stack);
+			
+			if(node_op.getOpCode() == CSGOpNode.OpCode.UNION) {
+				if(c_left == PointClass.IN) {
+					result = PointClass.IN;
+				}
+				else if(c_left == PointClass.ON) {
+					if(c_right == PointClass.IN)
+						result = PointClass.IN;
+					else
+						result = c_left;
+				}
+				else if(c_left == PointClass.OUT)
+					result = c_right;
+				else
+					assert(false) : "Unknown Point Class";
+			}
+			else if(node_op.getOpCode() == CSGOpNode.OpCode.DIFFERENCE) {
+				if(c_left == PointClass.IN) {
+					if(c_right == PointClass.IN)
+						result = PointClass.OUT;
+					else
+						result = PointClass.IN;
+				}
+				else if(c_left == PointClass.ON) {
+					if(c_right == PointClass.ON)
+						result = PointClass.OUT;
+					else
+						result = PointClass.ON;
+				}
+				else if(c_left == PointClass.OUT)
+					result = c_right;
+				else
+					assert(false) : "Unknown Point Class";
+			}
+			else if(node_op.getOpCode() == CSGOpNode.OpCode.INTERSECTION) {
+				if(c_left == PointClass.IN) {
+					result = c_right;
+				}
+				else if(c_left == PointClass.ON) {
+					if(c_right == PointClass.OUT)
+						result = PointClass.OUT;
+					else
+						result = PointClass.ON;
+				}
+				else if(c_left == PointClass.OUT)
+					result = PointClass.OUT;
+				else
+					assert(false) : "Unknown Point Class";
+			}
+			else
+				assert(false) : "Unknown OpCode";
+		}
+		
 		return result;
 	}
 	

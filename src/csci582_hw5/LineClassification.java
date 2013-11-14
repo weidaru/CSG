@@ -71,6 +71,17 @@ public class LineClassification {
 		return generate(LineClass.OUT);
 	}
 	
+	public boolean isOut() {
+		boolean result = true;
+		for(int i=0; i<classes.size(); i++) {
+			Pair<Float, LineClass> pair = classes.get(i);
+			if(pair.second() != LineClass.OUT)
+				return false;
+		}
+			
+		return result;
+	}
+	
 	private LinkedList<Line> generate(LineClass c) {
 		LinkedList<Line> result = new LinkedList<Line>();
 		for(int i=0; i<classes.size()-1; i++) {
