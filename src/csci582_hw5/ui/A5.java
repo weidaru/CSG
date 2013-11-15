@@ -31,6 +31,7 @@ import csci582_hw5.csg.CSGBuilder;
 import csci582_hw5.csg.CSGCache;
 import csci582_hw5.csg.CSGNode;
 import csci582_hw5.csg.CSGOperation;
+import csci582_hw5.pathplan.RoadMap;
 
 public class A5 extends JFrame {
 	//MenuBar	 		menu level 1
@@ -60,6 +61,7 @@ public class A5 extends JFrame {
 	private JMenuItem eraseMenuItem;
 	private JMenuItem sceneMenuItem;
 	private JMenuItem endpointsMenuItem;
+	private JMenuItem numPointsMenuItem;
 	
 	private SimpleViewer display;
 	
@@ -67,6 +69,7 @@ public class A5 extends JFrame {
 	private Map<String ,Matrix4f> matrixMap;
 	
 	private CSGCache csgCache;
+	private RoadMap roadMap;
 	
 	private boolean setMatrix(String newName, Matrix4f m) {
 		if(newName.length() > 16)
@@ -86,21 +89,25 @@ public class A5 extends JFrame {
 	
 	private void display(String name) {
 		if(csgCache.contains(name)) {
-			BranchGroup scene = new BranchGroup();
-			scene.setCapability(BranchGroup.ALLOW_DETACH);
-			Group tg = (Group) csgCache.getCachedGroup(name).cloneTree(true);
-			scene.addChild(tg);
-			
+			Group group = (Group) csgCache.getCachedGroup(name).cloneTree(true);
 			Sphere sphere = CSGOperation.calculateBoundingSphere(csgCache.get(name));
-			sphere = sphere.union(display.getViewSphere());
-			System.out.printf("Set new view Sphere (%.3f, %.3f, %.3f) %.3f\n",
-							  sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius);
-			display.setViewSphere(sphere);
-			display.getSVGroup().addChild(scene);
+			display(group, sphere);
 		}
 		else {
 			System.out.println("Node " + name + " cannot be found.");
 		}
+	}
+	
+	private void display(Group group, Sphere boundSphere) {
+		BranchGroup scene = new BranchGroup();
+		scene.setCapability(BranchGroup.ALLOW_DETACH);
+		scene.addChild(group);
+
+		Sphere sphere = boundSphere.union(display.getViewSphere());
+		System.out.printf("Set new view Sphere (%.3f, %.3f, %.3f) %.3f\n",
+						  sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius);
+		display.setViewSphere(sphere);
+		display.getSVGroup().addChild(scene);
 	}
 	
 	private void clear() {
@@ -190,11 +197,10 @@ public class A5 extends JFrame {
 		union("a","b","d");
 		union("d", "c", "e");
 		
-		//display("b");
-		//display("c");
 
-		display("e");
-
+		display("a");
+		roadMap.load(csgCache.get("a"));
+		display(roadMap.toGroup(), roadMap.getBoundSphere());
 	}
 	
 	public A5() {
@@ -205,6 +211,10 @@ public class A5 extends JFrame {
 		
 		matrixMap = new TreeMap<String ,Matrix4f>();
 		
+		roadMap = new RoadMap();
+		
+		
+		/***************UI initialization.***************/
 		//Menu level 1
 		menuBar = new JMenuBar();
 
@@ -234,6 +244,7 @@ public class A5 extends JFrame {
 		menuBar.add(viewMenu);
 		menuBar.add(transformMenu);
 		menuBar.add(objectMenu);
+		menuBar.add(planMenu);
 		
 		planMenu.add(sceneMenuItem);
 		planMenu.add(endpointsMenuItem);
@@ -587,6 +598,15 @@ public class A5 extends JFrame {
 		
 		endpointsMenuItem = new JMenuItem("EndPoints");
 		endpointsMenuItem.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				assert(false) : "STUB";
+			}
+		});
+		
+		numPointsMenuItem = new JMenuItem("NumPts");
+		numPointsMenuItem.addActionListener(new ActionListener() {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {

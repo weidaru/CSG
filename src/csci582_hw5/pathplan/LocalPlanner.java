@@ -160,7 +160,7 @@ public class LocalPlanner {
 		return newP;
 	}
 	
-	public boolean isCollide(Node node) {
+	public boolean isCollided(Node node) {
 		PointClass c = CSGOperation.pointCSGClassification(node.getPosition(), scene);
 		if(c != PointClass.OUT)
 			return false;

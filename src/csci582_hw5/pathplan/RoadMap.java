@@ -3,7 +3,9 @@ package csci582_hw5.pathplan;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -23,16 +25,20 @@ import csci582_hw5.csg.CSGOperation;
 
 public class RoadMap {
 	//Assume number of components are small.
-	private ArrayList<Component> components;
+	private LinkedList<Component> components;
 	private Map<Node, Set<Node>> edgeMap;
 	private ArrayList<Node> nodes;
 	private LocalPlanner planner;
+	private Sphere boundSphere = null;
+	private Group groupCache = null;
+	
+	private float distanceThreshold = -1.0f;
 	
 	public int maxNode = 100;
 	public int maxEdgePerNode = 30;
 	
 	public RoadMap() {
-		components = new ArrayList<Component>();
+		components = new LinkedList<Component>();
 		edgeMap = new TreeMap<Node, Set<Node>>();	//Replace with HashMap if query node becomes a bottleneck.
 		nodes = new ArrayList<Node>();
 		planner = new LocalPlanner();
@@ -43,21 +49,21 @@ public class RoadMap {
 		planner.setScene(scene);
 	
 		//Start generating.
-		Sphere boundSphere = CSGOperation.calculateBoundingSphere(scene);
+		boundSphere = CSGOperation.calculateBoundingSphere(scene);
 		boundSphere.radius = boundSphere.radius * 1.2f;
 		Point3f center = boundSphere.center;
 		float radius = boundSphere.radius;
 		float left = center.x - radius, right = center.x + radius,
 			  down = center.y - radius, up = center.y + radius,
 			  back = center.z - radius, front = center.z + radius;
-		float distanceThreshold = radius/5.0f;
+		distanceThreshold = radius/5.0f;
 		
 		int maxFailCount = Math.max(5, maxNode/10);
 		for(int i=0; i<maxNode; i++) {
 			int failCount = 0;
 			while(failCount < maxFailCount) {
 				Node cur = Node.generateRandomNode(left, right, down, up, back, front);
-				if(planner.isCollide(cur)) {
+				if(planner.isCollided(cur)) {
 					failCount++;
 					continue;
 				}
@@ -70,6 +76,79 @@ public class RoadMap {
 			}
 		}
 		
+	}
+	
+	public ArrayList<Line> query(Node n1, Node n2) {
+		ArrayList<Line> result = new ArrayList<Line>();
+		
+		if(planner.isCollided(n1) || planner.isCollided(n2))
+			return result;
+		
+		Node start = findClosestConnectedNode(n1);
+		Node end = findClosestConnectedNode(n2);
+		
+		if(findComponent(start) != findComponent(end))
+			return result;
+		
+		//Start A*, assume the cost is distance of moving along axis.
+		//At the same time, let heuristic be Hamilton distance. 
+		//The heuristic function is defined in the StateComparator.
+		PriorityQueue<State> heap = new PriorityQueue<State>(nodes.size(), new StateComparator(end));
+		State startState = new State(null, start, 0.0f);
+		State endState = null;
+		heap.add(startState);
+		
+		while(!heap.isEmpty()) {
+			State curState = heap.poll();
+			
+			if(curState.node == end) {
+				endState = curState;
+				break;
+			}
+			//Expand state.
+			Set<Node> edges = edgeMap.get(curState.node);
+			Iterator<Node> iterator = edges.iterator();
+			while(iterator.hasNext()) {
+				Node other = iterator.next();
+				Point3f p1 = curState.node.getPosition();
+				Point3f p2 = other.getPosition();
+				float cost = Math.abs(p1.x-p2.x)+Math.abs(p1.y-p2.y)+Math.abs(p1.z-p2.z);
+				State newState = new State(curState, other, cost);
+				heap.add(newState);
+			}
+		}
+		
+		if(endState != null) {
+			//Backtrack to get the path.
+			State curState = endState;
+			State prevState = endState.prev;
+			while(prevState != null) {
+				Line l = new Line(curState.node.getPosition(), prevState.node.getPosition());
+				result.add(l);
+				curState = curState.prev;
+				prevState = prevState.prev;
+			}
+		}
+		
+		return result;
+	}
+	
+	private Node findClosestConnectedNode(Node node) {
+		Node result = null;
+		
+		float minDistance = Float.MAX_VALUE;
+		for(int i=0; i<nodes.size(); i++) {
+			Node cur = nodes.get(i);
+			if(planner.isConnected(node, cur)) {
+				float d = node.getPosition().distance(cur.getPosition());
+				if(minDistance > d) {
+					minDistance = d;
+					result = cur;
+				}
+			}
+		}
+		
+		return result;
 	}
 	
 	private void buildEdge(Node node, float distanceThreshold) {
@@ -129,18 +208,23 @@ public class RoadMap {
 	}
 	
 	
+	
 	public void clear() {
 		components.clear();
 		edgeMap.clear();
 		nodes.clear();
 		planner.clear();
+		groupCache = null;
+		boundSphere = null;
 	}
 	
 	/*
 	 * To Java3D representation.
 	 */
 	public Group toGroup() {
-		Group result = new Group();
+		if(groupCache != null)
+			return groupCache;
+		groupCache = new Group();
 				
 		Set<Edge> edges = new TreeSet<Edge>();
 		Set<Map.Entry<Node, Set<Node>>> entries = edgeMap.entrySet();
@@ -160,16 +244,19 @@ public class RoadMap {
 		Iterator<Edge> edgeIterator = edges.iterator();
 		while(edgeIterator.hasNext()) {
 			Edge curEdge = edgeIterator.next();
-			Line line = new Line(curEdge.n1.getPosition(), curEdge.n2.getPosition());
-			Shape3D shape = line.toShape3D();
+			Shape3D shape = curEdge.toShape3D();
 			Appearance a = new Appearance();
 			ColoringAttributes ca = new ColoringAttributes(new Color3f(1.0f, 1.0f, 0.0f),ColoringAttributes.SHADE_FLAT);
 			a.setColoringAttributes(ca);
 			shape.setAppearance(a);
-			result.addChild(shape);
+			groupCache.addChild(shape);
 		}
 		
-		return result;
+		return groupCache;
+	}
+	
+	public Sphere getBoundSphere() {
+		return boundSphere;
 	}
 	
 	private static float distance(Node lhs, Node rhs) {
@@ -194,6 +281,47 @@ public class RoadMap {
 				return -1;
 			else
 				return 1;
+		}
+	}
+	
+	private class State {
+		public Node node = null;
+		public State prev = null;
+		public float cost = -1.0f;
+		
+		
+		public State(State prev, Node node, float cost) {
+			assert(node != null) : "Node cannot be null.";
+			this.prev = prev;
+			this.node = node;
+			this.cost = cost;
+		}
+	}
+	
+	private class StateComparator implements Comparator<State> {
+		private Node destination;
+		
+		public StateComparator(Node dest) {
+			assert(dest != null) : "Destination must not be null.";
+			destination = dest;
+		}
+		
+		@Override
+		public int compare(State lhs, State rhs) {
+			float utility_lhs = lhs.cost + heuristic(lhs);
+			float utility_rhs = lhs.cost + heuristic(rhs);
+			if(Math.abs(utility_lhs - utility_rhs) < 1e-5)
+				return 0;
+			else if(utility_lhs < utility_rhs)
+				return -1;
+			else
+				return 1;
+		}
+		
+		private float heuristic(State state) {
+			Point3f p1 = state.node.getPosition();
+			Point3f p2 = destination.getPosition();
+			return Math.abs(p1.x-p2.x) + Math.abs(p1.y-p2.y) + Math.abs(p1.z-p2.z);
 		}
 	}
 }

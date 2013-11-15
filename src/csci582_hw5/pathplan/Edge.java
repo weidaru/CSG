@@ -1,5 +1,10 @@
 package csci582_hw5.pathplan;
-public class Edge {
+
+import javax.media.j3d.LineArray;
+import javax.media.j3d.Shape3D;
+import javax.vecmath.Point3f;
+
+public class Edge implements Comparable<Edge> {
 	public Node n1, n2;
 	
 	public Edge(Node lhs, Node rhs) {
@@ -7,17 +12,28 @@ public class Edge {
 		n1 = lhs;
 		n2 = rhs;
 	}
-	
-	public boolean equals(Object other) {
-		if(other instanceof Edge) {
-			Edge otherEdge = (Edge)other;
-			if(n1 == otherEdge.n1 && n2 == otherEdge.n2)
-				return true;
-			if(n1 == otherEdge.n2 && n2 == otherEdge.n1)
-				return true;
-			return false;
+
+	public Shape3D toShape3D() {
+		Point3f[] pointArray = new Point3f[2];
+		pointArray[0] = n1.getPosition();
+		pointArray[1] = n2.getPosition();
+		LineArray lineArray = new LineArray(2, LineArray.COORDINATES);
+		lineArray.setCoordinates(0, pointArray);
+
+		return new Shape3D(lineArray);
+	}
+
+	@Override
+	public int compareTo(Edge otherEdge) {
+		if((otherEdge.n1 == n1 && otherEdge.n2 == n2) ||
+			otherEdge.n2 == n1 && otherEdge.n1 == n2)
+			return 0;
+		else {
+			if(otherEdge.n1.getX() > n1.getX())
+				return -1;
+			else
+				return 1;
 		}
-		else
-			return false;
+
 	}
 }

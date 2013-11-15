@@ -4,7 +4,7 @@ import java.util.Random;
 
 import javax.vecmath.Point3f;
 
-public class Node {
+public class Node implements Comparable<Node> {
 	public enum Axis {X, Y, Z};
 	
 	private Point3f position;
@@ -58,5 +58,16 @@ public class Node {
 		y = y_min + (x_max-x_min)*r.nextFloat();
 		z = z_min + (x_max-x_min)*r.nextFloat();
 		return new Node(x, y, z);
+	}
+
+	@Override
+	public int compareTo(Node otherNode) {
+		if(otherNode.getPosition().distance(getPosition()) < 1e-5)
+			return 0;
+		else if(otherNode.getX() < getX())
+			return -1;
+		else 
+			return 1;
+		
 	}
 }
