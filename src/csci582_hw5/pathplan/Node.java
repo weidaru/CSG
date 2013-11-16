@@ -55,19 +55,27 @@ public class Node implements Comparable<Node> {
 		Random r = new Random();
 		float x=0.0f, y=0.0f, z=0.0f;
 		x = x_min + (x_max-x_min)*r.nextFloat();
-		y = y_min + (x_max-x_min)*r.nextFloat();
-		z = z_min + (x_max-x_min)*r.nextFloat();
+		y = y_min + (y_max-y_min)*r.nextFloat();
+		z = z_min + (z_max-z_min)*r.nextFloat();
 		return new Node(x, y, z);
 	}
 
 	@Override
 	public int compareTo(Node otherNode) {
-		if(otherNode.getPosition().distance(getPosition()) < 1e-5)
+		if(this.equals(otherNode))
 			return 0;
 		else if(otherNode.getX() < getX())
 			return -1;
 		else 
 			return 1;
 		
+	}
+	
+	public boolean equals(Object other) {
+		Node otherNode = (Node)other;
+		if(otherNode.getPosition().distance(getPosition()) < 1e-5)
+			return true;
+		else
+			return false;
 	}
 }

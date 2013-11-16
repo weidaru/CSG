@@ -59,6 +59,9 @@ public class LocalPlanner {
 		return edgeCache.get(e);
 	}
 	
+	public LinkedList<Line> getCachedConnection(Edge e) {
+		return edgeCache.get(e);
+	}
 
 	private LinkedList<Line> buildConnection(Node lhs, Node rhs) {
 		Axis dir[] = new Axis[3];
@@ -162,7 +165,7 @@ public class LocalPlanner {
 	
 	public boolean isCollided(Node node) {
 		PointClass c = CSGOperation.pointCSGClassification(node.getPosition(), scene);
-		if(c != PointClass.OUT)
+		if(c == PointClass.OUT)
 			return false;
 		else
 			return true;

@@ -73,7 +73,7 @@ public class LineClassification {
 	
 	public boolean isOut() {
 		boolean result = true;
-		for(int i=0; i<classes.size(); i++) {
+		for(int i=0; i<classes.size()-1; i++) {
 			Pair<Float, LineClass> pair = classes.get(i);
 			if(pair.second() != LineClass.OUT)
 				return false;

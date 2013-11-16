@@ -200,7 +200,7 @@ public class A5 extends JFrame {
 
 		display("a");
 		roadMap.load(csgCache.get("a"));
-		display(roadMap.toGroup(), roadMap.getBoundSphere());
+		display(roadMap.getEdgeGroup(true), roadMap.getBoundSphere());
 	}
 	
 	public A5() {

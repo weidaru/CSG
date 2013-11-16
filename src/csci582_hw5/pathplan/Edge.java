@@ -25,8 +25,7 @@ public class Edge implements Comparable<Edge> {
 
 	@Override
 	public int compareTo(Edge otherEdge) {
-		if((otherEdge.n1 == n1 && otherEdge.n2 == n2) ||
-			otherEdge.n2 == n1 && otherEdge.n1 == n2)
+		if(this.equals(otherEdge))
 			return 0;
 		else {
 			if(otherEdge.n1.getX() > n1.getX())
@@ -35,5 +34,14 @@ public class Edge implements Comparable<Edge> {
 				return 1;
 		}
 
+	}
+	
+	public boolean equals(Object other) {
+		Edge otherEdge = (Edge)other;
+		if((otherEdge.n1 == n1 && otherEdge.n2 == n2) ||
+			(otherEdge.n2 == n1 && otherEdge.n1 == n2))
+			return true;
+		else
+			return false;
 	}
 }
