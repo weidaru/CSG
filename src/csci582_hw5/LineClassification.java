@@ -116,13 +116,14 @@ public class LineClassification {
 			}else if(cur.second() == LineClass.ON) {
 				int index = result.query(cur.first());
 				Pair<Float, LineClass> p_index = result.get(index);
+				LineClass save = result.get(result.query(next.first())).second();
 				
 				if(p_index.second() == LineClass.OUT || p_index.second() == LineClass.ON) {
 					result.classes.add(index+1, new Pair<Float, LineClass>(cur.first(), LineClass.ON));
 					index++;
 				}
 				int end_index = result.query(next.first());
-				LineClass save = this.get(this.query(next.first())).second();
+				
 				for(int j=index+1; j<=end_index; j++) {
 					Pair<Float, LineClass> temp = result.classes.get(j);
 					if(temp.second() == LineClass.OUT)
@@ -150,6 +151,7 @@ public class LineClassification {
 			else if(cur.second() == LineClass.IN) {
 				int index = result.query(cur.first());
 				Pair<Float, LineClass> p_index = result.get(index);
+				LineClass save = result.get(result.query(next.first())).second();
 				if(p_index.second() == LineClass.IN) {
 					result.classes.add(index+1, new Pair<Float, LineClass>(cur.first(), LineClass.OUT));
 					index++;
@@ -159,7 +161,7 @@ public class LineClassification {
 					index++;
 				}
 				int end_index = result.query(next.first());
-				LineClass save = this.get(this.query(next.first())).second();
+				
 				for(int j=index+1; j<=end_index; j++) {
 					Pair<Float, LineClass> temp = result.classes.get(j);
 					if(temp.second() == LineClass.IN)
@@ -188,12 +190,12 @@ public class LineClassification {
 			else if(cur.second() == LineClass.ON) {
 				int index = result.query(cur.first());
 				Pair<Float, LineClass> p_index = result.get(index);
+				LineClass save = result.get(result.query(next.first())).second();
 				if(p_index.second() == LineClass.IN) {
 					result.classes.add(index+1  , new Pair<Float, LineClass>(cur.first(), LineClass.ON));
 					index++;
 				}
 				int end_index = result.query(next.first());
-				LineClass save = this.get(this.query(next.first())).second();
 				for(int j=index+1; j<=end_index; j++) {
 					Pair<Float, LineClass> temp = result.classes.get(j);
 					if(temp.second() == LineClass.IN)

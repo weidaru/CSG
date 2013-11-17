@@ -166,7 +166,7 @@ public class A5 extends JFrame {
 			return;
 		CSGNode node = CSGBuilder.union(csgCache.get(n1), csgCache.get(n2));
 		csgCache.insert(newName, node);
-		System.out.println("New object "  + newName + " after union ");
+		System.out.println("New object "  + newName + " after union " + n1 +" and " + n2);
 	}
 	
 	private void difference(String n1, String n2, String newName) {
@@ -174,7 +174,7 @@ public class A5 extends JFrame {
 			return;
 		CSGNode node = CSGBuilder.difference(csgCache.get(n1), csgCache.get(n2));
 		csgCache.insert(newName, node);
-		System.out.println("New object "  + newName + " after difference ");
+		System.out.println("New object "  + newName + " after difference " + n1 +" and " + n2);
 	}
 	
 	private void intersection(String n1, String n2, String newName) {
@@ -182,7 +182,7 @@ public class A5 extends JFrame {
 			return;
 		CSGNode node = CSGBuilder.intersection(csgCache.get(n1), csgCache.get(n2));
 		csgCache.insert(newName, node);
-		System.out.println("New object "  + newName + " after intersection ");
+		System.out.println("New object "  + newName + " after intersection " + n1 +" and " + n2);
 	}
 	
 	private void move(String name, String matrixName, String newName) {
@@ -301,7 +301,7 @@ public class A5 extends JFrame {
 	}
 	
 	private void test() {
-		/*
+		
 		addCube("a", 0.2f, 0.2f, 0.3f);
 		Matrix4f matrix = new Matrix4f();
 		matrix.setIdentity();
@@ -325,7 +325,7 @@ public class A5 extends JFrame {
 		Point3f end = new Point3f(0.3f, 0.3f, 0.3f);
 		Pair<BranchGroup, Sphere> p =  query(start, end);
 		display(p.first(), p.second());
-		*/
+		
 	}
 	
 	public A5() {
