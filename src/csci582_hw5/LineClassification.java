@@ -2,6 +2,8 @@ package csci582_hw5;
 
 import java.util.LinkedList;
 
+import javax.vecmath.Point3f;
+
 public class LineClassification {
 	public enum LineClass {IN, ON, OUT, END};
 	//Close, Open
@@ -41,7 +43,13 @@ public class LineClassification {
 	
 	//Add to tail.
 	public void add(float param, LineClass c) {
-		assert(param > classes.get(classes.size()-1).first() && param<line.getEndParam());
+		float last = classes.get(classes.size()-2).first();
+		if(Math.abs(param - last) < 1e-4)
+			param = last;
+		
+		assert(param >= classes.get(classes.size()-2).first());
+		if(param > classes.get(classes.size()-1).first())
+			return;
 		classes.add(classes.size()-1,new Pair<Float, LineClass>(param, c) );
 	}
 	
@@ -114,7 +122,7 @@ public class LineClassification {
 					index++;
 				}
 				int end_index = result.query(next.first());
-				LineClass save = result.get(end_index).second();
+				LineClass save = this.get(this.query(next.first())).second();
 				for(int j=index+1; j<=end_index; j++) {
 					Pair<Float, LineClass> temp = result.classes.get(j);
 					if(temp.second() == LineClass.OUT)
@@ -146,8 +154,12 @@ public class LineClassification {
 					result.classes.add(index+1, new Pair<Float, LineClass>(cur.first(), LineClass.OUT));
 					index++;
 				}
+				else if(p_index.second() == LineClass.OUT) {
+					result.classes.add(index+1, new Pair<Float, LineClass>(cur.first(), LineClass.IN));
+					index++;
+				}
 				int end_index = result.query(next.first());
-				LineClass save = result.get(end_index).second();
+				LineClass save = this.get(this.query(next.first())).second();
 				for(int j=index+1; j<=end_index; j++) {
 					Pair<Float, LineClass> temp = result.classes.get(j);
 					if(temp.second() == LineClass.IN)
@@ -181,7 +193,7 @@ public class LineClassification {
 					index++;
 				}
 				int end_index = result.query(next.first());
-				LineClass save = result.get(end_index).second();
+				LineClass save = this.get(this.query(next.first())).second();
 				for(int j=index+1; j<=end_index; j++) {
 					Pair<Float, LineClass> temp = result.classes.get(j);
 					if(temp.second() == LineClass.IN)
@@ -258,7 +270,7 @@ public class LineClassification {
 		return sb.toString();
 	}
 	
-	/* for test use
+
 	public static void main(String[] argv) {
 		Point3f start = new Point3f(0.0f, 0.0f, 0.0f);
 		Point3f end = new Point3f(1.0f, 0.0f, 0.0f);
@@ -274,7 +286,7 @@ public class LineClassification {
 		LineClassification result = c1.intersection(c2);
 		System.out.println(result.toString());
 	}
-	*/
+
 }
 
 

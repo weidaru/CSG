@@ -8,9 +8,10 @@ public class Edge implements Comparable<Edge> {
 	public Node n1, n2;
 	
 	public Edge(Node lhs, Node rhs) {
-		assert(lhs == rhs);
+		assert(lhs != rhs);
 		n1 = lhs;
 		n2 = rhs;
+
 	}
 
 	public Shape3D toShape3D() {
@@ -28,7 +29,9 @@ public class Edge implements Comparable<Edge> {
 		if(this.equals(otherEdge))
 			return 0;
 		else {
-			if(otherEdge.n1.getX() > n1.getX())
+			float d = n1.getPosition().distance(n2.getPosition());
+			float otherD = otherEdge.n1.getPosition().distance(otherEdge.n2.getPosition());
+			if(d < otherD)
 				return -1;
 			else
 				return 1;
@@ -36,6 +39,7 @@ public class Edge implements Comparable<Edge> {
 
 	}
 	
+	@Override
 	public boolean equals(Object other) {
 		Edge otherEdge = (Edge)other;
 		if((otherEdge.n1 == n1 && otherEdge.n2 == n2) ||

@@ -38,6 +38,10 @@ public class LocalPlanner {
 		return this;
 	}
 	
+	public CSGNode getScene() {
+		return scene;
+	}
+	
 	public boolean isConnected(Node lhs, Node rhs) {	
 		Edge e = new Edge(lhs, rhs);
 		if(edgeCache.containsKey(e))
@@ -146,7 +150,10 @@ public class LocalPlanner {
 	}
 	
 	private Point3f movePoint(Point3f p, Axis a, float newValue) {
-		Point3f newP = new Point3f(p);
+		Point3f newP = new Point3f();
+		newP.x = p.x;
+		newP.y = p.y;
+		newP.z = p.z;
 		switch(a) {
 		case X:
 			newP.x = newValue;

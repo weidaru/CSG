@@ -404,7 +404,7 @@ public class CSGOperation {
 			cf.left=center.x-c.getXDimension();
 			cf.right=center.x+c.getXDimension();
 			cf.up=center.y+c.getYDimension();
-			cf.down=center.y-c.getZDimension();
+			cf.down=center.y-c.getYDimension();
 			cubes.add(cf);
 		}
 		else if(cur instanceof CSGTransformNode) {
@@ -506,7 +506,7 @@ public class CSGOperation {
 		float epsilon = (float) 1e-6;
 		float front=center.z+cube.getZDimension()+epsilon, back=center.z-cube.getZDimension()-epsilon;
 		float left=center.x-cube.getXDimension()-epsilon, right=center.x+cube.getXDimension()+epsilon;
-		float up=center.y+cube.getYDimension()+epsilon, down=center.y-cube.getZDimension()-epsilon;
+		float up=center.y+cube.getYDimension()+epsilon, down=center.y-cube.getYDimension()-epsilon;
 		
 		boolean isSet = false;
 		

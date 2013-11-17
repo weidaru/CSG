@@ -12,6 +12,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import javax.media.j3d.Appearance;
+import javax.media.j3d.BranchGroup;
 import javax.media.j3d.ColoringAttributes;
 import javax.media.j3d.Group;
 import javax.media.j3d.Shape3D;
@@ -30,21 +31,23 @@ public class RoadMap {
 	//Assume number of components are small.
 	private LinkedList<Component> components;
 	private Map<Node, Set<Node>> edgeMap;
-	private ArrayList<Node> nodes;
 	private LocalPlanner planner;
 	private Sphere boundSphere = null;
 	
-	private float distanceThreshold = -1.0f;
-	
+
 	public int maxNode = 100;
 	public int maxEdgePerNode = 30;
-	public float distanceThresholdCoefficient = 1.5f;
+	public float radiusCoefficient = 1.0f;
+	public float distanceThreshold = Float.MAX_VALUE;
 	
 	public RoadMap() {
 		components = new LinkedList<Component>();
 		edgeMap = new TreeMap<Node, Set<Node>>();	//Replace with HashMap if query node becomes a bottleneck.
-		nodes = new ArrayList<Node>();
 		planner = new LocalPlanner();
+	}
+	
+	public LocalPlanner getPlanner() {
+		return planner;
 	}
 	
 	public void load(CSGNode scene) {
@@ -53,13 +56,13 @@ public class RoadMap {
 	
 		//Start generating.
 		boundSphere = CSGOperation.calculateBoundingSphere(scene);
-		boundSphere.radius = boundSphere.radius * distanceThresholdCoefficient;
+		float radius = boundSphere.radius * radiusCoefficient;
+		boundSphere.radius = boundSphere.radius * 1.3f;
 		Point3f center = boundSphere.center;
-		float radius = boundSphere.radius;
 		float left = center.x - radius, right = center.x + radius,
 			  down = center.y - radius, up = center.y + radius,
 			  back = center.z - radius, front = center.z + radius;
-		distanceThreshold = radius/2.0f;
+		distanceThreshold = Math.max(radius/3.0f, distanceThreshold);
 		
 		int maxFailCount = Math.max(20, maxNode/5);
 		for(int i=0; i<maxNode; i++) {
@@ -70,7 +73,7 @@ public class RoadMap {
 					failCount++;
 					continue;
 				}
-				nodes.add(cur);
+				edgeMap.put(cur, null);
 				Component comp = new Component();
 				comp.add(cur);
 				components.add(comp);
@@ -83,6 +86,9 @@ public class RoadMap {
 	
 	public ArrayList<Line> query(Node n1, Node n2) {
 		ArrayList<Line> result = new ArrayList<Line>();
+		
+		if(planner.getScene() == null)
+			return result;
 		
 		if(planner.isCollided(n1) || planner.isCollided(n2))
 			return result;
@@ -111,11 +117,13 @@ public class RoadMap {
 		if(start == null)
 			return result;
 		
+		
 		//Start A*, assume the cost is distance of moving along axis.
 		//At the same time, let heuristic be Hamilton distance. 
 		//The heuristic function is defined in the StateComparator.
-		PriorityQueue<State> heap = new PriorityQueue<State>(nodes.size(), new StateComparator(end));
-		State startState = new State(null, start, 0.0f);
+		PriorityQueue<State> heap = new PriorityQueue<State>(edgeMap.size(), new StateComparator(end));
+		State nullState = new State();
+		State startState = new State(nullState, start, 0.0f);
 		State endState = null;
 		heap.add(startState);
 		
@@ -131,7 +139,7 @@ public class RoadMap {
 			Iterator<Node> iterator = edges.iterator();
 			while(iterator.hasNext()) {
 				Node other = iterator.next();
-				if(other == curState.node)
+				if(other == curState.prev.node)
 					continue;
 				Point3f p1 = curState.node.getPosition();
 				Point3f p2 = other.getPosition();
@@ -145,12 +153,32 @@ public class RoadMap {
 			//Backtrack to get the path.
 			State curState = endState;
 			State prevState = endState.prev;
-			while(prevState != null) {
-				Line l = new Line(curState.node.getPosition(), prevState.node.getPosition());
-				result.add(l);
+			while(prevState != nullState) {
+				LinkedList<Line> list = planner.getCachedConnection(new Edge(curState.node, prevState.node));
+				assert(list != null);
+				for(int i=0; i<list.size(); i++) {
+					result.add(list.get(i));
+				}
 				curState = curState.prev;
 				prevState = prevState.prev;
 			}
+			
+			//Also add (n1,start) and (n2, end).
+			{
+				LinkedList<Line> list = planner.getCachedConnection(new Edge(n1, start));
+				assert(list != null);
+				for(int i=0; i<list.size(); i++) {
+					result.add(list.get(i));
+				}
+			}
+			{
+				LinkedList<Line> list = planner.getCachedConnection(new Edge(n2, end));
+				assert(list != null);
+				for(int i=0; i<list.size(); i++) {
+					result.add(list.get(i));
+				}
+			}
+			
 		}
 		
 		return result;
@@ -159,8 +187,9 @@ public class RoadMap {
 	private SortedSet<Node> findConnectedNodes(Node node) {
 		SortedSet<Node> result = new TreeSet<Node>(new AnchorNodeComparator(node));
 		
-		for(int i=0; i<nodes.size(); i++) {
-			Node cur = nodes.get(i);
+		Iterator<Node> iterator = edgeMap.keySet().iterator();
+		while(iterator.hasNext()) {
+			Node cur = iterator.next();
 			if(planner.isConnected(node, cur)) {
 				result.add(cur);
 			}
@@ -173,8 +202,9 @@ public class RoadMap {
 		Set<Node> edges = new TreeSet<Node>();
 		SortedSet<Node> heap = new TreeSet<Node>(new AnchorNodeComparator(node));
 
-		for(int i=0; i<nodes.size(); i++) {
-			Node cur = nodes.get(i);
+		Iterator<Node> iterator = edgeMap.keySet().iterator();
+		while(iterator.hasNext()) {
+			Node cur = iterator.next();
 			if(cur == node) {
 				continue;
 			}
@@ -188,7 +218,7 @@ public class RoadMap {
 			}
 		}
 		
-		Iterator<Node> iterator = heap.iterator();
+		iterator = heap.iterator();
 		while(iterator.hasNext()) {
 			if(edges.size() == maxEdgePerNode )
 				break;
@@ -228,7 +258,6 @@ public class RoadMap {
 	public void clear() {
 		components.clear();
 		edgeMap.clear();
-		nodes.clear();
 		planner.clear();
 		boundSphere = null;
 	}
@@ -243,7 +272,7 @@ public class RoadMap {
 		Set<Map.Entry<Node, Set<Node>>> entries = edgeMap.entrySet();
 		Iterator<Map.Entry<Node, Set<Node>>> entryIterator = entries.iterator();
 		Appearance a = new Appearance();
-		ColoringAttributes ca = new ColoringAttributes(new Color3f(1.0f, 1.0f, 0.0f),ColoringAttributes.SHADE_FLAT);
+		ColoringAttributes ca = new ColoringAttributes(new Color3f(0.6f, 0.0f, 0.0f),ColoringAttributes.SHADE_FLAT);
 		a.setColoringAttributes(ca);
 		
 		while(entryIterator.hasNext()) {
@@ -261,7 +290,8 @@ public class RoadMap {
 		while(edgeIterator.hasNext()) {
 			Edge curEdge = edgeIterator.next();
 			if(!directConnection) {
-				LinkedList<Line> connection = planner.getConnection(curEdge.n1, curEdge.n2);
+				LinkedList<Line> connection = planner.getCachedConnection(curEdge);
+				assert(connection != null);
 				for(int i=0; i<connection.size(); i++) {
 					Shape3D shape = connection.get(i).toShape3D();
 					shape.setAppearance(a);
@@ -279,13 +309,19 @@ public class RoadMap {
 		return group;
 	}
 	
-	public Group getNodeGroup() {
-		Group group = new Group();
+	public BranchGroup getNodeGroup() {
+		BranchGroup group = new BranchGroup();
+		group.setCapability(BranchGroup.ALLOW_DETACH);
 		
-		for(int i=0; i<nodes.size(); i++) {
-			Point3f p = nodes.get(i).getPosition();
+		Iterator<Node> iterator = edgeMap.keySet().iterator();
+		while(iterator.hasNext()) {
+			Point3f p = iterator.next().getPosition();
+			Appearance a = new Appearance();
+			ColoringAttributes ca = new ColoringAttributes(new Color3f(1.0f, 1.0f, 1.0f),ColoringAttributes.SHADE_FLAT);
+			a.setColoringAttributes(ca);
 			com.sun.j3d.utils.geometry.Sphere s = 
-					new com.sun.j3d.utils.geometry.Sphere(distanceThreshold/maxNode);
+					new com.sun.j3d.utils.geometry.Sphere(Math.min(distanceThreshold/maxNode, boundSphere.radius/50.0f));
+			s.setAppearance(a);
 			TransformGroup tg = new TransformGroup();
 			Transform3D transform = new Transform3D();
 			Matrix4f matrix = new Matrix4f();
@@ -297,6 +333,7 @@ public class RoadMap {
 			tg.setTransform(transform);
 			tg.addChild(s);
 			group.addChild(tg);
+			
 		}
 		
 		return group;
@@ -336,6 +373,9 @@ public class RoadMap {
 		public State prev = null;
 		public float cost = -1.0f;
 		
+		public State() {
+			
+		}
 		
 		public State(State prev, Node node, float cost) {
 			assert(node != null) : "Node cannot be null.";
@@ -356,7 +396,7 @@ public class RoadMap {
 		@Override
 		public int compare(State lhs, State rhs) {
 			float utility_lhs = lhs.cost + heuristic(lhs);
-			float utility_rhs = lhs.cost + heuristic(rhs);
+			float utility_rhs = rhs.cost + heuristic(rhs);
 			if(Math.abs(utility_lhs - utility_rhs) < 1e-5)
 				return 0;
 			else if(utility_lhs < utility_rhs)

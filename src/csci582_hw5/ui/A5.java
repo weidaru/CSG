@@ -7,15 +7,17 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.TreeMap;
 
 import javax.media.j3d.Appearance;
 import javax.media.j3d.BranchGroup;
 import javax.media.j3d.ColoringAttributes;
-import javax.media.j3d.Group;
 import javax.media.j3d.LineArray;
 import javax.media.j3d.Shape3D;
+import javax.media.j3d.Transform3D;
+import javax.media.j3d.TransformGroup;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
@@ -25,12 +27,15 @@ import javax.vecmath.Color3f;
 import javax.vecmath.Matrix4f;
 import javax.vecmath.Point3f;
 
+import csci582_hw5.Line;
+import csci582_hw5.Pair;
 import csci582_hw5.SimpleViewer;
 import csci582_hw5.Sphere;
 import csci582_hw5.csg.CSGBuilder;
 import csci582_hw5.csg.CSGCache;
 import csci582_hw5.csg.CSGNode;
 import csci582_hw5.csg.CSGOperation;
+import csci582_hw5.pathplan.Node;
 import csci582_hw5.pathplan.RoadMap;
 
 public class A5 extends JFrame {
@@ -64,12 +69,15 @@ public class A5 extends JFrame {
 	private JMenuItem numPointsMenuItem;
 	
 	private SimpleViewer display;
+	private BranchGroup coordinateLabGroup;
 	
 	private Matrix4f matrix;
 	private Map<String ,Matrix4f> matrixMap;
 	
 	private CSGCache csgCache;
 	private RoadMap roadMap;
+	private BranchGroup roadMapGroup;
+	private BranchGroup endpointsGroup;
 	
 	private boolean setMatrix(String newName, Matrix4f m) {
 		if(newName.length() > 16)
@@ -89,7 +97,7 @@ public class A5 extends JFrame {
 	
 	private void display(String name) {
 		if(csgCache.contains(name)) {
-			Group group = (Group) csgCache.getCachedGroup(name).cloneTree(true);
+			BranchGroup group = csgCache.getCachedGroup(name);
 			Sphere sphere = CSGOperation.calculateBoundingSphere(csgCache.get(name));
 			display(group, sphere);
 		}
@@ -98,14 +106,17 @@ public class A5 extends JFrame {
 		}
 	}
 	
-	private void display(Group group, Sphere boundSphere) {
-		BranchGroup scene = new BranchGroup();
-		scene.setCapability(BranchGroup.ALLOW_DETACH);
-		scene.addChild(group);
-
-		Sphere sphere = boundSphere.union(display.getViewSphere());
-		System.out.printf("Set new view Sphere (%.3f, %.3f, %.3f) %.3f\n",
-						  sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius);
+	private void display(BranchGroup scene, Sphere boundSphere) {
+		Sphere sphere = null;
+		if(boundSphere == null) {
+			sphere = display.getViewSphere();
+		}
+		else {
+			sphere = boundSphere.union(display.getViewSphere());
+		}
+		// Log info, comment out for now.
+		//System.out.printf("Set new view Sphere (%.3f, %.3f, %.3f) %.3f\n",
+		//				  sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius);
 		display.setViewSphere(sphere);
 		display.getSVGroup().addChild(scene);
 	}
@@ -113,6 +124,10 @@ public class A5 extends JFrame {
 	private void clear() {
 		display.getSVGroup().removeAllChildren();
 		display.getSVGroup().addChild(getCoordinateLab());
+	}
+	
+	private void hide(javax.media.j3d.Node node) {
+		display.getSVGroup().removeChild(node);
 	}
 	
 	private void addCube(String name, float x, float y, float z) {
@@ -127,6 +142,7 @@ public class A5 extends JFrame {
 
 		CSGNode node = CSGBuilder.buildCube(x, y, z);
 		csgCache.insert(name, node);
+		System.out.println("New cube " + name);
 	}
 	
 	private boolean csgOpCheck(String n1, String n2, String newName) {
@@ -150,6 +166,7 @@ public class A5 extends JFrame {
 			return;
 		CSGNode node = CSGBuilder.union(csgCache.get(n1), csgCache.get(n2));
 		csgCache.insert(newName, node);
+		System.out.println("New object "  + newName + " after union ");
 	}
 	
 	private void difference(String n1, String n2, String newName) {
@@ -157,6 +174,7 @@ public class A5 extends JFrame {
 			return;
 		CSGNode node = CSGBuilder.difference(csgCache.get(n1), csgCache.get(n2));
 		csgCache.insert(newName, node);
+		System.out.println("New object "  + newName + " after difference ");
 	}
 	
 	private void intersection(String n1, String n2, String newName) {
@@ -164,6 +182,7 @@ public class A5 extends JFrame {
 			return;
 		CSGNode node = CSGBuilder.intersection(csgCache.get(n1), csgCache.get(n2));
 		csgCache.insert(newName, node);
+		System.out.println("New object "  + newName + " after intersection ");
 	}
 	
 	private void move(String name, String matrixName, String newName) {
@@ -181,10 +200,109 @@ public class A5 extends JFrame {
 		}
 		CSGNode node = CSGBuilder.transform(csgCache.get(name), matrixMap.get(matrixName));
 		csgCache.insert(newName, node);
+		System.out.println("New object " + newName + " after move " + name + " with matrix " + matrixName);
+	}
+	
+	private Pair<BranchGroup, Sphere> query(Point3f start, Point3f end) {
+		Node n1 = new Node(start.x, start.y, start.z);
+		Node n2 = new Node(end.x, end.y, end.z);
+		
+		ArrayList<Line> lineList =  roadMap.query(n1, n2);
+		if(lineList.size() == 0)
+			System.out.println("No path between " + n1.getPosition().toString() + " and " + n2.getPosition().toString());
+		
+		BranchGroup group = new BranchGroup();
+		group.setCapability(BranchGroup.ALLOW_DETACH);
+		Appearance a = null; {
+			a= new Appearance();
+			ColoringAttributes ca = new ColoringAttributes(new Color3f(0.0f, 1.0f, 0.0f),ColoringAttributes.SHADE_FLAT);
+			a.setColoringAttributes(ca);
+		}
+
+		for(int i=0; i<lineList.size(); i++) {
+			Shape3D lineShape = lineList.get(i).toShape3D();
+			lineShape.setAppearance(a);
+			group.addChild(lineShape);
+		}
+		
+		a = null; {
+			a = new Appearance();
+			ColoringAttributes ca = new ColoringAttributes(new Color3f(1.0f, 0.0f, 0.0f),ColoringAttributes.SHADE_FLAT);
+			a.setColoringAttributes(ca);
+			float radius = Math.min(0.05f, display.getViewSphere().radius/50.0f);
+			if(radius == 0.0f)
+				radius = 0.005f;
+			com.sun.j3d.utils.geometry.Sphere s = 
+					new com.sun.j3d.utils.geometry.Sphere(radius);
+			
+			
+			s.setAppearance(a);
+			
+			TransformGroup tg = new TransformGroup();
+			Transform3D transform = new Transform3D();
+			Matrix4f matrix = new Matrix4f();
+			matrix.setIdentity();
+			matrix.m03 = start.x;
+			matrix.m13 = start.y;
+			matrix.m23 = start.z;
+			transform.set(matrix);
+			tg.setTransform(transform);
+			tg.addChild(s);
+			
+			group.addChild(tg);
+		}
+		
+		a = null; {
+			a = new Appearance();
+			ColoringAttributes ca = new ColoringAttributes(new Color3f(0.0f, 1.0f, 0.0f),ColoringAttributes.SHADE_FLAT);
+			a.setColoringAttributes(ca);
+			float radius = Math.min(0.05f, display.getViewSphere().radius/50.0f);
+			if(radius == 0.0f)
+				radius = 0.005f;
+			com.sun.j3d.utils.geometry.Sphere s = 
+					new com.sun.j3d.utils.geometry.Sphere(radius);
+			s.setAppearance(a);
+			
+			TransformGroup tg = new TransformGroup();
+			Transform3D transform = new Transform3D();
+			Matrix4f matrix = new Matrix4f();
+			matrix.setIdentity();
+			matrix.m03 = end.x;
+			matrix.m13 = end.y;
+			matrix.m23 = end.z;
+			transform.set(matrix);
+			tg.setTransform(transform);
+			tg.addChild(s);
+			
+			group.addChild(tg);
+		}
+		
+		Sphere sphere = new Sphere();
+		sphere.radius = start.distance(end)/2.0f;
+		sphere.center.x = (start.x + end.x)/2.0f;
+		sphere.center.y = (start.y + end.y)/2.0f;
+		sphere.center.z = (start.z + end.z)/2.0f;
+		
+		return new Pair<BranchGroup, Sphere>(group, sphere);
+	}
+	
+	private void setRoadMapVisibility(boolean visible) {
+		if(visible) {
+			if(roadMapGroup == null) {
+				roadMapGroup = roadMap.getNodeGroup();
+			}
+			
+			assert(roadMapGroup != null);
+			display(roadMapGroup, roadMap.getBoundSphere());
+		}
+		else {
+			hide(roadMapGroup);
+		}
 	}
 	
 	private void test() {
-		addCube("a", 0.1f, 0.1f, 0.1f);
+		/*
+		addCube("a", 0.2f, 0.2f, 0.3f);
 		Matrix4f matrix = new Matrix4f();
 		matrix.setIdentity();
 		matrix.m03 = 0.05f;
@@ -194,13 +312,20 @@ public class A5 extends JFrame {
 		move("a", "a", "b");
 		move("b", "a", "c");
 		
-		union("a","b","d");
+		difference("a","b","d");
 		union("d", "c", "e");
 		
 
-		display("a");
-		roadMap.load(csgCache.get("a"));
-		display(roadMap.getEdgeGroup(true), roadMap.getBoundSphere());
+		display("d");
+
+		roadMap.load(csgCache.get("d"));
+		setRoadMapVisibility(true);
+		
+		Point3f start = new Point3f(0.1f, 0.1f, 0.1f);
+		Point3f end = new Point3f(0.3f, 0.3f, 0.3f);
+		Pair<BranchGroup, Sphere> p =  query(start, end);
+		display(p.first(), p.second());
+		*/
 	}
 	
 	public A5() {
@@ -212,6 +337,8 @@ public class A5 extends JFrame {
 		matrixMap = new TreeMap<String ,Matrix4f>();
 		
 		roadMap = new RoadMap();
+		roadMapGroup = null;
+		endpointsGroup = null;
 		
 		
 		/***************UI initialization.***************/
@@ -226,14 +353,18 @@ public class A5 extends JFrame {
 
 		//Setup the menu hierarchy.
 		fileMenu.add(exitMenuItem);
+		
 		transformMenu.add(rotateXMenuItem);
 		transformMenu.add(rotateYMenuItem);
 		transformMenu.add(rotateZMenuItem);
 		transformMenu.add(translateMenuItem);
 		transformMenu.add(composeMenuItem);
 		transformMenu.add(doneMenuItem);
+		
 		viewMenu.add(displayMenuItem);
 		viewMenu.add(eraseMenuItem);
+		viewMenu.add(roadmapMenuItem);
+		
 		objectMenu.add(blockMenuItem);	
 		objectMenu.add(moveMenuItem);
 		objectMenu.add(unionMenuItem);
@@ -259,14 +390,17 @@ public class A5 extends JFrame {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
 		display = new SimpleViewer();
+		coordinateLabGroup = null;
 		display.getSVGroup().addChild(getCoordinateLab());
 		
 		test();
 	}
 	
 	private BranchGroup getCoordinateLab() {
-		BranchGroup lineGroup = new BranchGroup();
-		lineGroup.setCapability(BranchGroup.ALLOW_DETACH);
+		if(coordinateLabGroup != null)
+			return coordinateLabGroup;
+		coordinateLabGroup = new BranchGroup();
+		coordinateLabGroup.setCapability(BranchGroup.ALLOW_DETACH);
 		
 		{
 			Appearance appearance = new Appearance();
@@ -279,7 +413,7 @@ public class A5 extends JFrame {
 		    LineArray pla = new LineArray(2, LineArray.COORDINATES);
 		    pla.setCoordinates(0, plaPts);
 		    Shape3D plShape = new Shape3D(pla, appearance);
-		    lineGroup.addChild(plShape);
+		    coordinateLabGroup.addChild(plShape);
 		}
 		
 		{
@@ -293,7 +427,7 @@ public class A5 extends JFrame {
 		    LineArray pla = new LineArray(2, LineArray.COORDINATES);
 		    pla.setCoordinates(0, plaPts);
 		    Shape3D plShape = new Shape3D(pla, appearance);
-		    lineGroup.addChild(plShape);
+		    coordinateLabGroup.addChild(plShape);
 		}
 		
 		{
@@ -307,11 +441,11 @@ public class A5 extends JFrame {
 		    LineArray pla = new LineArray(2, LineArray.COORDINATES);
 		    pla.setCoordinates(0, plaPts);
 		    Shape3D plShape = new Shape3D(pla, appearance);
-		    lineGroup.addChild(plShape);
+		    coordinateLabGroup.addChild(plShape);
 		}
 
 	    
-	    return lineGroup;
+	    return coordinateLabGroup;
 	}
 	
 	private Point getCenterLocation(int w, int h) {
@@ -329,6 +463,13 @@ public class A5 extends JFrame {
 	
 	private void initMenuLevel3() {
 		exitMenuItem = new JMenuItem("Exit");
+		exitMenuItem.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				System.exit(0);
+			}
+		});
 
 		
 		rotateXMenuItem = new JMenuItem("RotateX");
@@ -486,15 +627,15 @@ public class A5 extends JFrame {
 			}
 		});
 		
-		roadmapMenuItem = new JCheckBoxMenuItem();
+		roadmapMenuItem = new JCheckBoxMenuItem("RoadMap");
 		roadmapMenuItem.addItemListener(new ItemListener() {
 			@Override
 			public void itemStateChanged(ItemEvent arg0) {
 				if(roadmapMenuItem.isSelected()) {
-					assert(false) : "Stub";
+					setRoadMapVisibility(true);
 				}
 				else {
-					assert(false) : "Stub";
+					setRoadMapVisibility(false);
 				}
 			}
 		});
@@ -592,7 +733,16 @@ public class A5 extends JFrame {
 			
 			@Override
 			public void actionPerformed(ActionEvent arg0) {
-				assert(false) : "STUB";
+				TextDialog dialog = new TextDialog(A5.this, "ObjectName");
+				String name = dialog.getText();
+				CSGNode scene = csgCache.get(name);
+				if(csgCache.get(name) == null) {
+					System.out.println("Cannot find object " + name);
+					return;
+				}
+				roadMap.load(scene);
+				roadMapGroup = null;
+				roadmapMenuItem.setSelected(true);
 			}
 		});
 		
@@ -601,7 +751,18 @@ public class A5 extends JFrame {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				assert(false) : "STUB";
+				EndpointsDialog dialog = new EndpointsDialog(A5.this);
+				Point3f start = dialog.getStartPoint();
+				Point3f end = dialog.getEndPoint();
+				if(start == null || end == null) {
+					System.out.println("Invalid coordinates.");
+					return;
+				}
+				Pair<BranchGroup, Sphere> p = query(start, end);
+				if(endpointsGroup != null)
+					hide(endpointsGroup);
+				endpointsGroup = p.first();
+				display(p.first(), p.second());
 			}
 		});
 		
@@ -610,7 +771,15 @@ public class A5 extends JFrame {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				assert(false) : "STUB";
+				TextDialog dialog = new TextDialog(A5.this, "Number of Points");
+				String text = dialog.getText();
+				try {
+					int num = Integer.parseInt(text);
+					roadMap.maxNode = num;
+				}
+				catch(IllegalArgumentException ex) {
+					System.out.println("Bad input + " + text);
+				}
 			}
 		});
 	}
