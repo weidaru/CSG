@@ -15,6 +15,7 @@ import javax.media.j3d.Appearance;
 import javax.media.j3d.BranchGroup;
 import javax.media.j3d.ColoringAttributes;
 import javax.media.j3d.LineArray;
+import javax.media.j3d.MultipleParentException;
 import javax.media.j3d.Shape3D;
 import javax.media.j3d.Transform3D;
 import javax.media.j3d.TransformGroup;
@@ -118,7 +119,12 @@ public class A5 extends JFrame {
 		//System.out.printf("Set new view Sphere (%.3f, %.3f, %.3f) %.3f\n",
 		//				  sphere.center.x, sphere.center.y, sphere.center.z, sphere.radius);
 		display.setViewSphere(sphere);
-		display.getSVGroup().addChild(scene);
+		try {
+			display.getSVGroup().addChild(scene);
+		}catch(MultipleParentException exp) {
+			System.out.println("Cannot display the same object twice.");
+		}
+		
 	}
 	
 	private void clear() {
@@ -194,7 +200,7 @@ public class A5 extends JFrame {
 			System.out.println("Node " + name + " cannot be found." );
 			return;
 		}
-		if(!csgCache.contains(matrixName)) {
+		if(!matrixMap.containsKey(matrixName)) {
 			System.out.println("Matrix " + matrixName +" cannot be found.");
 			return;
 		}
@@ -302,30 +308,54 @@ public class A5 extends JFrame {
 	
 	private void test() {
 		
-		addCube("a", 0.2f, 0.2f, 0.3f);
+		/* For figure 6
+		addCube("a", 0.2f, 0.2f, 0.2f);
 		Matrix4f matrix = new Matrix4f();
 		matrix.setIdentity();
-		matrix.m03 = 0.05f;
-		matrix.m13 = 0.05f;
-		matrix.m23 = 0.05f;
+		matrix.m03 = 0.1f;
+		matrix.m13 = 0.1f;
+		matrix.m23 = 0.1f;
 		setMatrix("a", matrix);
 		move("a", "a", "b");
 		move("b", "a", "c");
+		move("c", "a", "d");
 		
-		difference("a","b","d");
-		union("d", "c", "e");
+		difference("a", "b", "dif0");
+		intersection("dif0", "c", "dif1");
+		union("dif1", "d", "dif2");
+		display("dif2");
+
 		
-
-		display("d");
-
-		roadMap.load(csgCache.get("d"));
+		
+		roadMap.load(csgCache.get("dif2"));
 		setRoadMapVisibility(true);
 		
-		Point3f start = new Point3f(0.1f, 0.1f, 0.1f);
-		Point3f end = new Point3f(0.3f, 0.3f, 0.3f);
+		Point3f start = new Point3f(0.2f, 0.15f, 0.15f);
+		Point3f end = new Point3f(1.0f, 0.3f, 0.3f);
 		Pair<BranchGroup, Sphere> p =  query(start, end);
 		display(p.first(), p.second());
+		*/
 		
+		/* For figure 8
+		addCube("a", 0.2f, 0.2f, 0.2f);
+		Matrix4f matrix = new Matrix4f();
+		matrix.setIdentity();
+		matrix.m03 = 0.6f;
+		matrix.m13 = 0.0f;
+		matrix.m23 = 0.0f;
+		setMatrix("a", matrix);
+		move("a", "a", "b");
+		union("a", "b", "c");
+
+		display("c");
+		roadMap.load(csgCache.get("c"));
+		setRoadMapVisibility(true);
+		
+		Point3f start = new Point3f(0.5f, 0.2f, -0.3f);
+		Point3f end = new Point3f(0.5f, 0.2f, 0.5f);
+		Pair<BranchGroup, Sphere> p =  query(start, end);
+		display(p.first(), p.second());
+		*/
 	}
 	
 	public A5() {
@@ -379,6 +409,7 @@ public class A5 extends JFrame {
 		
 		planMenu.add(sceneMenuItem);
 		planMenu.add(endpointsMenuItem);
+		planMenu.add(numPointsMenuItem);
 		
 		setJMenuBar(menuBar);
 
@@ -776,6 +807,7 @@ public class A5 extends JFrame {
 				try {
 					int num = Integer.parseInt(text);
 					roadMap.maxNode = num;
+					System.out.println("Set number of points to " + num);
 				}
 				catch(IllegalArgumentException ex) {
 					System.out.println("Bad input + " + text);

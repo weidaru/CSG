@@ -14,7 +14,6 @@ import java.util.TreeSet;
 import javax.media.j3d.Appearance;
 import javax.media.j3d.BranchGroup;
 import javax.media.j3d.ColoringAttributes;
-import javax.media.j3d.Group;
 import javax.media.j3d.Shape3D;
 import javax.media.j3d.Transform3D;
 import javax.media.j3d.TransformGroup;
@@ -265,8 +264,8 @@ public class RoadMap {
 	/*
 	 * To Java3D representation.
 	 */
-	public Group getEdgeGroup(boolean directConnection) {
-		Group group = new Group();
+	public BranchGroup getEdgeGroup(boolean directConnection) {
+		BranchGroup group = new BranchGroup();
 				
 		Set<Edge> edges = new TreeSet<Edge>();
 		Set<Map.Entry<Node, Set<Node>>> entries = edgeMap.entrySet();
